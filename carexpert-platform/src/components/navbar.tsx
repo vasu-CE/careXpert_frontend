@@ -1,10 +1,10 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "./ui/button";
 import { ThemeToggle } from "./theme-toggle";
 import { Heart, Menu, X } from "lucide-react";
 import { useAuthStore } from "@/store/authstore";
-import axios from "axios";
+
 
 export function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
