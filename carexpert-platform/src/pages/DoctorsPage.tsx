@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Card, CardContent } from "../components/ui/card";
@@ -11,10 +11,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../components/ui/select";
-import { Search, MapPin, Star, Clock, Filter, Heart } from "lucide-react";
+import { Search, MapPin, Clock, Filter, Heart } from "lucide-react";
 import { Navbar } from "../components/navbar";
 import { Footer } from "../components/footer";
 import { Link } from "react-router-dom";
+import { toast } from "sonner";
+import axios from "axios";
 
 export default function DoctorsPage() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -91,6 +93,29 @@ export default function DoctorsPage() {
         "Neurologist specializing in movement disorders and neurodegenerative diseases.",
     },
   ];
+
+  const url = `${import.meta.env.VITE_BASE_URL}/api/patint`;
+
+  useEffect(() => {
+    const fetchDoctors = async () => {
+      try{
+        const res = await axios.get(`${url}` , {withCredentials : true});
+        if(res.status){
+          toast.success("true");
+        }else{
+          toast.error("False");
+        }
+      }catch(err){
+        if(axios.isAxiosError(err) && err.response){
+          toast.error(err.response.data?.message || "Something went wrong");
+        }else{
+          toast.error("An unexpected error occurred.");
+        }
+      }
+    };
+
+    fetchDoctors();
+  },[])
 
   const specialties = [
     "Cardiology",
@@ -250,12 +275,7 @@ export default function DoctorsPage() {
                             <MapPin className="h-4 w-4 flex-shrink-0" />
                             <span className="truncate">{doctor.location}</span>
                           </div>
-                          <div className="flex items-center gap-1">
-                            <Star className="h-4 w-4 text-yellow-400 fill-current flex-shrink-0" />
-                            <span>
-                              {doctor.rating} ({doctor.reviews} reviews)
-                            </span>
-                          </div>
+                          
                           <span className="whitespace-nowrap">
                             {doctor.experience} experience
                           </span>

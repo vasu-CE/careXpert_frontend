@@ -1,5 +1,4 @@
 import { Button } from "../../components/ui/button";
-import { Input } from "../../components/ui/input";
 import {
   Card,
   CardContent,
@@ -12,6 +11,9 @@ import { InputWithIcon } from "../../components/ui/input-with-icon";
 import { Link, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import * as React from "react";
+import { toast } from "sonner";
+import axios from "axios";
+import { useAuthStore } from "@/store/authstore";
 
 export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
@@ -19,24 +21,53 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const navigate = useNavigate();
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Simulate login based on demo emails
-    if (email === "patient@demo.com" && password === "password") {
-      navigate("/dashboard/patient");
-    } else if (email === "doctor@demo.com" && password === "password") {
-      navigate("/dashboard/doctor");
-    } else if (email === "admin@demo.com" && password === "password") {
-      navigate("/admin");
-    } else {
-      alert(
-        "Invalid credentials. Use demo@demo.com/password for patient, doctor@demo.com/password for doctor, or admin@demo.com/password for admin"
-      );
+
+    try{
+      const res = await axios.post(`${import.meta.env.VITE_BASE_URL}/api/user/login` ,{data : email , password} , {
+        withCredentials : true
+      });
+      if(res.data.success){
+        useAuthStore.getState().setUser({
+          id : res.data.data.id,
+          name : res.data.data.name,
+          email : res.data.data.email,
+          profilePicture : res.data.data.profilePicture,
+          role : res.data.data.role,
+          refreshToken : res.data.data.refreshToken
+        })
+
+        if(res.data.data.role === "PATIENT"){
+          navigate("/dashboard/patient");
+        }else{
+          navigate("/dashboard/doctor")
+        }
+      }
+      // console.log(res.data.data)
+    }catch(err){
+      if(axios.isAxiosError(err) && err.response){
+        toast.error(err.response.data?.message || "Something went wrong");
+      }else{
+        toast.error("Unknown error occured..")
+      }
     }
+    // Simulate login based on demo emails
+    // if (email === "patient@demo.com" && password === "password") {
+    //   navigate("/dashboard/patient");
+    // } else if (email === "doctor@demo.com" && password === "password") {
+    //   navigate("/dashboard/doctor");
+    // } else if (email === "admin@demo.com" && password === "password") {
+    //   navigate("/admin");
+    // } else {
+    //   alert(
+    //     "Invalid credentials. Use demo@demo.com/password for patient, doctor@demo.com/password for doctor, or admin@demo.com/password for admin"
+    //   );
+    // }
   };
 
   return (
-    <div className="flex justify-center items-center min-h-screen">
+    <div className="flex justify-center items-center min-h-[80vh]">
       <Card className="w-full max-w-md">
         <CardHeader className="flex flex-col items-center space-y-2">
           <div className="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center">
@@ -58,7 +89,7 @@ export default function Login() {
               </label>
               <InputWithIcon
                 id="email"
-                type="email"
+                type="text"
                 placeholder="Enter your email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
