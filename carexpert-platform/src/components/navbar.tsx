@@ -1,23 +1,33 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Button } from "./ui/button";
 import { ThemeToggle } from "./theme-toggle";
 import { Heart, Menu, X } from "lucide-react";
-import { useAuth } from "../context/auth-context";
+import { useAuthStore } from "@/store/authstore";
+
 
 export function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const { user, logout } = useAuth();
+  
+  const user = useAuthStore((state) => state.user);
+  const logout = useAuthStore((state) => state.logout);
+  const navigate = useNavigate();
 
+  const handleLogout = async () => {
+    // await axios.post(`${import.meta.env.VITE_BASE_URL}/api/user/logout` , {} , {withCredentials : true});
+    logout();
+    localStorage.removeItem('auth-storage');
+    navigate("/");
+  }
   // Determine home link based on user role
   const getHomeLink = () => {
     if (!user) return "/";
     switch (user.role) {
-      case "patient":
+      case "PATIENT":
         return "/dashboard/patient";
-      case "doctor":
+      case "DOCTOR":
         return "/dashboard/doctor";
-      case "admin":
+      case "ADMIN":
         return "/admin";
       default:
         return "/";
@@ -37,21 +47,21 @@ export function Navbar() {
     }
 
     switch (user.role) {
-      case "patient":
+      case "PATIENT":
         return [
           { href: "/dashboard/patient", label: "Dashboard" },
           { href: "/doctors", label: "Find Doctors" },
           { href: "/chat", label: "Chat" },
           { href: "/profile/patient", label: "Profile" },
         ];
-      case "doctor":
+      case "DOCTOR":
         return [
           { href: "/dashboard/doctor", label: "Dashboard" },
           { href: "/dashboard/doctor?tab=appointments", label: "Appointments" },
           { href: "/dashboard/doctor?tab=patients", label: "Patients" },
           { href: "/profile/doctor", label: "Profile" },
         ];
-      case "admin":
+      case "ADMIN":
         return [
           { href: "/admin", label: "Dashboard" },
           { href: "/admin?tab=doctor-requests", label: "Doctor Requests" },
@@ -103,7 +113,7 @@ export function Navbar() {
                 </span>
                 <Button
                   variant="ghost"
-                  onClick={logout}
+                  onClick={handleLogout}
                   className="text-gray-600 dark:text-gray-300"
                 >
                   Logout

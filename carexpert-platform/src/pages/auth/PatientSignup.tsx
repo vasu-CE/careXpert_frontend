@@ -1,5 +1,4 @@
 import { Button } from "../../components/ui/button";
-import { Input } from "../../components/ui/input";
 import {
   Card,
   CardContent,
@@ -37,7 +36,7 @@ export default function PatientSignup() {
   };
 
   return (
-    <div className="flex justify-center items-center min-h-screen">
+    <div className="flex justify-center items-center ">
       <Card className="w-full max-w-md">
         <CardHeader className="flex flex-col items-center space-y-2">
           <div className="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center">

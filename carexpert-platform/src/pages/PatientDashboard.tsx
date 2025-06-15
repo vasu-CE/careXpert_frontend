@@ -18,7 +18,6 @@ import {
   TabsTrigger,
 } from "../components/ui/tabs";
 import { Avatar, AvatarFallback, AvatarImage } from "../components/ui/avatar";
-import { ScrollArea } from "../components/ui/scroll-area";
 import {
   Calendar,
   Clock,
@@ -30,57 +29,88 @@ import {
   Heart,
 } from "lucide-react";
 import { Navbar } from "../components/navbar";
-// import { useAuth } from "@/components/auth-context" // Assuming a different auth context for now
+import { useAuthStore } from "@/store/authstore";
+import axios from "axios";
+import { toast } from "sonner";
+
+type Appointment = {
+  id : string,
+  status: 'PENDING' | 'COMPLETED' | 'CANCELLED'; 
+  doctorName: string;
+  profilePicture : string;
+  specialty: string;
+  location: string;
+  appointmentTime: {
+    start: string; 
+    end: string;
+  };
+}
+
+type AppointmentApiResponse = {
+  statusCode: number;
+  message: string;
+  success: boolean;
+  data: Appointment[];
+};
+
+type Prescription = {
+  id : string,
+  date : string,
+  prescriptionText : string,
+  doctorName : string,
+  speciality : string,
+  clinicLocation : string
+}
+
+type PrescriptionApiResponse = {
+  statusCode: number;
+  message: string;
+  success: boolean;
+  data: Prescription[];
+}
 
 export default function PatientDashboard() {
   const navigate = useNavigate();
-  // const { user, isLoading } = useAuth() // Assuming a different auth context for now
-  const user = { name: "John Smith", role: "patient" }; // Dummy user for UI demonstration
-  const isLoading = false; // Assume loading is false for dummy data
+  const user = useAuthStore((state) => state.user);
+
+ 
+  const isLoading = false; 
 
   const [searchQuery, setSearchQuery] = useState("");
+  const [upcomingAppointments , setUpcomingAppointments] = useState<Appointment[]>([]);
+  const [pastAppointments , setPastAppointments] = useState<Appointment[]>([]);
+  const [prescriptions , setPrescriptions] = useState<Prescription[]>([]);
 
-  // Redirect if not logged in or not a patient (using dummy logic for now)
+  const url = `${import.meta.env.VITE_BASE_URL}/api/patient`
+  
   useEffect(() => {
-    if (!isLoading && (!user || user.role !== "patient")) {
-      navigate("/auth/login"); // Use react-router-dom navigate
+    if (!isLoading && (!user || user.role !== "PATIENT")) {
+      navigate("/auth/login"); 
     }
   }, [user, isLoading, navigate]);
 
-  // Mock data (same as in the Next.js version)
-  const upcomingAppointments = [
-    {
-      id: 1,
-      doctor: "Dr. Sarah Johnson",
-      specialty: "Cardiology",
-      date: "2024-01-15",
-      time: "10:00 AM",
-      type: "In-person",
-      avatar: "/placeholder.svg?height=40&width=40",
-    },
-    {
-      id: 2,
-      doctor: "Dr. Michael Chen",
-      specialty: "Dermatology",
-      date: "2024-01-18",
-      time: "2:30 PM",
-      type: "Video Call",
-      avatar: "/placeholder.svg?height=40&width=40",
-    },
-  ];
+  useEffect(() => {
+    async function fetchAppointment(){
+      try{
+        const res = await axios.get<AppointmentApiResponse>(`${url}/upcoming-appointments` , {withCredentials : true});
+        if(res.data.success){
+          setUpcomingAppointments(res.data.data);
+        }
+        const res2 = await axios.get<AppointmentApiResponse>(`${url}/past-appointments` , {withCredentials : true});
+        if(res.data.success){
+          setPastAppointments(res2.data.data);
+        }
+      }catch(err){
+        if(axios.isAxiosError(err) && err.response){
+          toast.error(err.response.data.message);
+        }else{
+          toast.error("Unknown error occured..");
+        }
+      }
+    };
 
-  const pastAppointments = [
-    {
-      id: 3,
-      doctor: "Dr. Emily Davis",
-      specialty: "General Medicine",
-      date: "2024-01-10",
-      time: "9:00 AM",
-      type: "In-person",
-      status: "Completed",
-      avatar: "/placeholder.svg?height=40&width=40",
-    },
-  ];
+    fetchAppointment();
+  },[])
 
   const doctors = [
     {
@@ -115,22 +145,40 @@ export default function PatientDashboard() {
     },
   ];
 
-  const prescriptions = [
-    {
-      id: 1,
-      medication: "Lisinopril 10mg",
-      doctor: "Dr. Sarah Johnson",
-      date: "2024-01-10",
-      instructions: "Take once daily with food",
-    },
-    {
-      id: 2,
-      medication: "Metformin 500mg",
-      doctor: "Dr. Emily Davis",
-      date: "2024-01-05",
-      instructions: "Take twice daily before meals",
-    },
-  ];
+  // const prescriptions = [
+  //   {
+  //     id: 1,
+  //     medication: "Lisinopril 10mg",
+  //     doctor: "Dr. Sarah Johnson",
+  //     date: "2024-01-10",
+  //     instructions: "Take once daily with food",
+  //   },
+  //   {
+  //     id: 2,
+  //     medication: "Metformin 500mg",
+  //     doctor: "Dr. Emily Davis",
+  //     date: "2024-01-05",
+  //     instructions: "Take twice daily before meals",
+  //   },
+  // ];
+  useEffect(() => {
+    async function fetchPrescritions(){
+      try{
+        const res = await axios.get<PrescriptionApiResponse>(`${url}/view-prescriptions` , {withCredentials : true});
+        console.log(res.data)
+        if(res.data.success){
+          setPrescriptions(res.data.data);
+        }
+      }catch(err){
+        if(axios.isAxiosError(err) && err.response){
+          toast.error(err.response.data?.message || "Something went wrong");
+        }else{
+          toast.error("Unknown error occured");
+        }
+      }
+    }
+    fetchPrescritions();
+  },[])
 
   // Show loading state while checking authentication
   if (isLoading) {
@@ -194,7 +242,7 @@ export default function PatientDashboard() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  {upcomingAppointments.map((appointment) => (
+                  {upcomingAppointments?.map((appointment) => (
                     <div
                       key={appointment.id}
                       className="flex items-center justify-between p-4 border rounded-lg"
@@ -202,10 +250,10 @@ export default function PatientDashboard() {
                       <div className="flex items-center gap-3">
                         <Avatar>
                           <AvatarImage
-                            src={appointment.avatar || "/placeholder.svg"}
+                            src={appointment.profilePicture || "/placeholder.svg"}
                           />
                           <AvatarFallback>
-                            {appointment.doctor
+                            {appointment.doctorName
                               .split(" ")
                               .map((n) => n[0])
                               .join("")}
@@ -213,17 +261,29 @@ export default function PatientDashboard() {
                         </Avatar>
                         <div>
                           <h4 className="font-semibold text-gray-900 dark:text-white">
-                            {appointment.doctor}
+                            {appointment.doctorName}
                           </h4>
                           <p className="text-sm text-gray-600 dark:text-gray-300">
                             {appointment.specialty}
                           </p>
                           <p className="text-sm text-gray-500 dark:text-gray-400">
-                            {appointment.date} at {appointment.time}
+                          {new Date(appointment.appointmentTime.start).toLocaleDateString("en-US")}
+                            {" "}
+                            at{" "}
+                            {new Date(appointment.appointmentTime.start).toLocaleTimeString('en-US' , {
+                              hour : "numeric",
+                              minute : "2-digit"
+                            })}
+                            {" "}
+                            to{" "}
+                            {new Date(appointment.appointmentTime.end).toLocaleTimeString('en-US' , {
+                              hour : 'numeric',
+                              minute : '2-digit'
+                            })}
                           </p>
                         </div>
                       </div>
-                      <Badge
+                      {/* <Badge
                         variant={
                           appointment.type === "Video Call"
                             ? "secondary"
@@ -231,7 +291,7 @@ export default function PatientDashboard() {
                         }
                       >
                         {appointment.type}
-                      </Badge>
+                      </Badge> */}
                     </div>
                   ))}
                 </CardContent>
@@ -254,10 +314,10 @@ export default function PatientDashboard() {
                       <div className="flex items-center gap-3">
                         <Avatar>
                           <AvatarImage
-                            src={appointment.avatar || "/placeholder.svg"}
+                            src={appointment.profilePicture || "/placeholder.svg"}
                           />
                           <AvatarFallback>
-                            {appointment.doctor
+                            {appointment.doctorName
                               .split(" ")
                               .map((n) => n[0])
                               .join("")}
@@ -265,13 +325,25 @@ export default function PatientDashboard() {
                         </Avatar>
                         <div>
                           <h4 className="font-semibold text-gray-900 dark:text-white">
-                            {appointment.doctor}
+                            {appointment.doctorName}
                           </h4>
                           <p className="text-sm text-gray-600 dark:text-gray-300">
                             {appointment.specialty}
                           </p>
                           <p className="text-sm text-gray-500 dark:text-gray-400">
-                            {appointment.date} at {appointment.time}
+                            {new Date(appointment.appointmentTime.start).toLocaleDateString("en-US")}
+                            {" "}
+                            at{" "}
+                            {new Date(appointment.appointmentTime.start).toLocaleTimeString('en-US' , {
+                              hour : "numeric",
+                              minute : "2-digit"
+                            })}
+                            {" "}
+                            to{" "}
+                            {new Date(appointment.appointmentTime.end).toLocaleTimeString('en-US' , {
+                              hour : 'numeric',
+                              minute : '2-digit'
+                            })}
                           </p>
                         </div>
                       </div>
@@ -383,21 +455,29 @@ export default function PatientDashboard() {
                     className="flex items-center justify-between p-4 border rounded-lg"
                   >
                     <div>
-                      <h4 className="font-semibold text-gray-900 dark:text-white">
+                      {/* <h4 className="font-semibold text-gray-900 dark:text-white">
                         {prescription.medication}
-                      </h4>
+                      </h4> */}
                       <p className="text-sm text-gray-600 dark:text-gray-300">
-                        Prescribed by: {prescription.doctor}
+                        Prescribed by: Dr. {prescription.doctorName}
                       </p>
                       <p className="text-sm text-gray-500 dark:text-gray-400">
-                        Date: {prescription.date}
+                        Date: {new Date(prescription.date).toLocaleDateString()} {" "} 
+                        {new Date(prescription.date).toLocaleTimeString('en-US' ,{
+                          hour : 'numeric',
+                          minute : '2-digit'
+                        })}
                       </p>
                       <p className="text-sm text-gray-700 dark:text-gray-300 mt-2">
-                        Instructions: {prescription.instructions}
+                        Instructions: {prescription.prescriptionText}
                       </p>
                     </div>
                     {/* Link or button to view/download PDF would go here */}
-                    <Button variant="outline" size="sm">
+                    <Button 
+                      variant="outline"
+                      size="sm"
+                      onClick = {() => window.open(`${url}/prescription-pdf/${prescription.id}` , "_blank")}
+                    >
                       View PDF
                     </Button>
                   </div>
