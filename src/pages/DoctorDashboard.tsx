@@ -35,71 +35,70 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../components/ui/select";
+import axios from "axios";
+import { toast } from "sonner";
+import { useAuthStore } from "@/store/authstore";
 
+type Appointment = {
+  id : string,
+  status : string,
+  patientName : string,
+  notes : string,
+  profilePicture : string,
+  appointmentTime: {
+    startTime: string; 
+    endTime: string;
+  };
+}
+
+type AppointmentApiResponse = {
+  statusCode : number,
+  message : string,
+  success : boolean,
+  data : Appointment[]
+}
 export default function DoctorDashboard() {
   const navigate = useNavigate();
   // const { user, isLoading } = useAuth() // Assuming a different auth context for now
-  const user = { name: "Dr. John Smith", role: "doctor" }; // Dummy user for UI demonstration
+  const user = useAuthStore((state) => state.user);
+  // const user = { name: "Dr. John Smith", role: "doctor" }; // Dummy user for UI demonstration
   const isLoading = false; // Assume loading is false for dummy data
   const [selectedTimeSlot, setSelectedTimeSlot] = useState(""); // Keep this state for future UI
   const [searchQuery, setSearchQuery] = useState(""); // Keep this state for future UI
 
+  const [todayAppointments , setTodayAppointments] = useState<Appointment[]>([]);
+  const [upcomingAppointments , setUpcomingApppointments] = useState<Appointment[]>([]);
+  const url = `${import.meta.env.VITE_BASE_URL}/api/doctor`
   // Redirect if not logged in or not a doctor (using dummy logic for now)
   useEffect(() => {
-    if (!isLoading && (!user || user.role !== "doctor")) {
+    if (!isLoading && (!user || user.role !== "DOCTOR")) {
       navigate("/auth/login"); // Use react-router-dom navigate
     }
   }, [user, isLoading, navigate]);
 
-  // Mock data
-  const todayAppointments = [
-    {
-      id: 1,
-      patient: "John Smith",
-      time: "9:00 AM",
-      type: "In-person",
-      status: "Confirmed",
-      avatar: "/placeholder.svg?height=40&width=40",
-    },
-    {
-      id: 2,
-      patient: "Sarah Wilson",
-      time: "10:30 AM",
-      type: "Video Call",
-      status: "Confirmed",
-      avatar: "/placeholder.svg?height=40&width=40",
-    },
-    {
-      id: 3,
-      patient: "Michael Brown",
-      time: "2:00 PM",
-      type: "In-person",
-      status: "Pending",
-      avatar: "/placeholder.svg?height=40&width=40",
-    },
-  ];
+  useEffect(() => {
+    async function fetchAppointments(){
+      try{
+        const todayRes = await axios.get<AppointmentApiResponse>(`${url}/appointments` , {withCredentials : true});
+        if(todayRes.data.success){
+          setTodayAppointments(todayRes.data.data);
+        }
+        
+        const upcomingRes = await axios.get<AppointmentApiResponse>(`${url}/appointments?upcoming=true` , {withCredentials : true});
+        if(upcomingRes.data.success){
+          setUpcomingApppointments(upcomingRes.data.data);
+        }
+      }catch(err){
+        if(axios.isAxiosError(err) && err.response){
+          toast.error(err.response.data?.message || "Something went wrong");
+        }else{
+          toast.error("Unknown error occured");
+        }
+      }
+    }
 
-  const upcomingAppointments = [
-    {
-      id: 4,
-      patient: "Emily Davis",
-      date: "2024-01-16",
-      time: "11:00 AM",
-      type: "Video Call",
-      status: "Confirmed",
-      avatar: "/placeholder.svg?height=40&width=40",
-    },
-    {
-      id: 5,
-      patient: "Robert Johnson",
-      date: "2024-01-17",
-      time: "3:30 PM",
-      type: "In-person",
-      status: "Confirmed",
-      avatar: "/placeholder.svg?height=40&width=40",
-    },
-  ];
-
+    fetchAppointments();
+  },[])
   const patientChats = [
     {
       id: 1,
@@ -159,8 +158,8 @@ export default function DoctorDashboard() {
                   <p className="text-sm font-medium text-gray-600 dark:text-gray-300">
                     Today's Appointments
                   </p>
-                  <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                    {todayAppointments.length}
+                  <p className="text-2xl font-bold dark:text-white">
+                    {todayAppointments?.length}
                   </p>
                 </div>
                 <Calendar className="h-8 w-8 text-blue-600" />
@@ -254,7 +253,13 @@ export default function DoctorDashboard() {
                     <Calendar className="h-5 w-5 text-blue-600" />
                     Today's Appointments
                   </CardTitle>
-                  <CardDescription>January 15, 2024</CardDescription>
+                  <CardDescription>
+                    {new Date().toLocaleDateString('en-US' ,{
+                      year : 'numeric',
+                      month : 'long',
+                      day : 'numeric'
+                    })}
+                  </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   {todayAppointments.map((appointment) => (
@@ -265,10 +270,10 @@ export default function DoctorDashboard() {
                       <div className="flex items-center gap-3">
                         <Avatar>
                           <AvatarImage
-                            src={appointment.avatar || "/placeholder.svg"}
+                            src={appointment.profilePicture || "/placeholder.svg"}
                           />
                           <AvatarFallback>
-                            {appointment.patient
+                            {appointment.patientName
                               .split(" ")
                               .map((n) => n[0])
                               .join("")}
@@ -276,33 +281,41 @@ export default function DoctorDashboard() {
                         </Avatar>
                         <div>
                           <h4 className="font-semibold text-gray-900 dark:text-white">
-                            {appointment.patient}
+                            {appointment.patientName}
                           </h4>
                           <p className="text-sm text-gray-600 dark:text-gray-300">
-                            {appointment.time}
+                            {/* {new Date(appointment.appointmentTime.startTime).toLocaleDateString()} {" "} */}
+                            {new Date(appointment.appointmentTime.startTime).toLocaleTimeString('en-US' , {
+                              hour : 'numeric',
+                              minute : '2-digit'
+                            }).replace(/ (AM|PM)/, '')} {" to "}
+                            {new Date(appointment.appointmentTime.endTime).toLocaleTimeString('en-US' , {
+                              hour : 'numeric',
+                              minute : '2-digit'
+                            })}
                           </p>
-                          <Badge
-                            variant={
-                              appointment.type === "Video Call"
-                                ? "secondary"
-                                : "default"
-                            }
-                            className="text-xs"
-                          >
-                            {appointment.type}
-                          </Badge>
+                          {appointment.notes && 
+                            <Badge>
+                              {appointment.notes}
+                            </Badge>
+                          }
                         </div>
                       </div>
                       <div className="flex flex-col gap-2">
-                        <Badge
-                          variant={
-                            appointment.status === "Confirmed"
-                              ? "default"
-                              : "secondary"
-                          }
-                        >
-                          {appointment.status}
-                        </Badge>
+                      <Badge
+                        variant={
+                          appointment.status === "COMPLETED"
+                            ? "default"
+                            : appointment.status === "PENDING"
+                            ? "secondary"
+                            : appointment.status === "CANCELLED"
+                            ? "destructive"
+                            : "outline"
+                        }
+                      >
+                        {appointment.status}
+                      </Badge>
+
                         <Button variant="outline" size="sm">
                           <Settings className="h-4 w-4 mr-2" /> Manage
                         </Button>
@@ -321,7 +334,7 @@ export default function DoctorDashboard() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  {upcomingAppointments.map((appointment) => (
+                  {upcomingAppointments?.map((appointment) => (
                     <div
                       key={appointment.id}
                       className="flex items-center justify-between p-4 border rounded-lg"
@@ -329,10 +342,10 @@ export default function DoctorDashboard() {
                       <div className="flex items-center gap-3">
                         <Avatar>
                           <AvatarImage
-                            src={appointment.avatar || "/placeholder.svg"}
+                            src={appointment.profilePicture || "/placeholder.svg"}
                           />
                           <AvatarFallback>
-                            {appointment.patient
+                            {appointment.patientName
                               .split(" ")
                               .map((n) => n[0])
                               .join("")}
@@ -340,21 +353,20 @@ export default function DoctorDashboard() {
                         </Avatar>
                         <div>
                           <h4 className="font-semibold text-gray-900 dark:text-white">
-                            {appointment.patient}
+                            {appointment.patientName}
                           </h4>
                           <p className="text-sm text-gray-600 dark:text-gray-300">
-                            {appointment.date} at {appointment.time}
+                            {new Date(appointment.appointmentTime.startTime).toLocaleDateString()} {" "}
+                            {new Date(appointment.appointmentTime.startTime).toLocaleTimeString('en-US' , {
+                              hour : 'numeric',
+                              minute : '2-digit'
+                            })}
                           </p>
-                          <Badge
-                            variant={
-                              appointment.type === "Video Call"
-                                ? "secondary"
-                                : "default"
-                            }
-                            className="text-xs"
-                          >
-                            {appointment.type}
-                          </Badge>
+                          {appointment.notes && 
+                            <Badge>
+                              {appointment.notes}
+                            </Badge>
+                          }
                         </div>
                       </div>
                       <Badge
