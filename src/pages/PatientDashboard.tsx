@@ -69,6 +69,35 @@ type PrescriptionApiResponse = {
   data: Prescription[];
 }
 
+type FindDoctors = {
+  id: string,
+  userId : string,
+  specialty: string,
+  clinicLocation: string,
+  experience: string,
+  education : string,
+  bio : string,
+  languages : [string],
+  user : {
+    name: string,
+    profilePicture : string
+  },
+  nextAvailable : {
+    id : string,
+    consultationFee : number,
+    startTime : string,
+    endTime : string,
+    status : string
+  }
+}
+
+type FindDoctorsApiResponse = {
+  statusCode : number,
+  message : string,
+  success : boolean,
+  data : FindDoctors[];
+}
+
 export default function PatientDashboard() {
   const navigate = useNavigate();
   const user = useAuthStore((state) => state.user);
@@ -80,7 +109,7 @@ export default function PatientDashboard() {
   const [upcomingAppointments , setUpcomingAppointments] = useState<Appointment[]>([]);
   const [pastAppointments , setPastAppointments] = useState<Appointment[]>([]);
   const [prescriptions , setPrescriptions] = useState<Prescription[]>([]);
-
+  const [doctors , setDoctors] = useState<FindDoctors[]>([]);
   const url = `${import.meta.env.VITE_BASE_URL}/api/patient`
   
   useEffect(() => {
@@ -112,55 +141,58 @@ export default function PatientDashboard() {
     fetchAppointment();
   },[])
 
-  const doctors = [
-    {
-      id: 1,
-      name: "Dr. Sarah Johnson",
-      specialty: "Cardiology",
-      location: "New York, NY",
-      rating: 4.9,
-      experience: "15 years",
-      avatar: "/placeholder.svg?height=60&width=60",
-      available: true,
-    },
-    {
-      id: 2,
-      name: "Dr. Michael Chen",
-      specialty: "Dermatology",
-      location: "Los Angeles, CA",
-      rating: 4.8,
-      experience: "12 years",
-      avatar: "/placeholder.svg?height=60&width=60",
-      available: true,
-    },
-    {
-      id: 3,
-      name: "Dr. Emily Davis",
-      specialty: "General Medicine",
-      location: "Chicago, IL",
-      rating: 4.7,
-      experience: "10 years",
-      avatar: "/placeholder.svg?height=60&width=60",
-      available: false,
-    },
-  ];
-
-  // const prescriptions = [
+  // const doctors = [
   //   {
   //     id: 1,
-  //     medication: "Lisinopril 10mg",
-  //     doctor: "Dr. Sarah Johnson",
-  //     date: "2024-01-10",
-  //     instructions: "Take once daily with food",
+  //     name: "Dr. Sarah Johnson",
+  //     specialty: "Cardiology",
+  //     location: "New York, NY",
+  //     rating: 4.9,
+  //     experience: "15 years",
+  //     avatar: "/placeholder.svg?height=60&width=60",
+  //     available: true,
   //   },
   //   {
   //     id: 2,
-  //     medication: "Metformin 500mg",
-  //     doctor: "Dr. Emily Davis",
-  //     date: "2024-01-05",
-  //     instructions: "Take twice daily before meals",
+  //     name: "Dr. Michael Chen",
+  //     specialty: "Dermatology",
+  //     location: "Los Angeles, CA",
+  //     rating: 4.8,
+  //     experience: "12 years",
+  //     avatar: "/placeholder.svg?height=60&width=60",
+  //     available: true,
+  //   },
+  //   {
+  //     id: 3,
+  //     name: "Dr. Emily Davis",
+  //     specialty: "General Medicine",
+  //     location: "Chicago, IL",
+  //     rating: 4.7,
+  //     experience: "10 years",
+  //     avatar: "/placeholder.svg?height=60&width=60",
+  //     available: false,
   //   },
   // ];
+
+  useEffect(() => {
+    async function fetchDoctors(){
+      try{
+        const res = await axios.get<FindDoctorsApiResponse>(`${url}/fetchAllDoctors` , {withCredentials : true});
+        if(res.data.success){
+          setDoctors(res.data.data);
+        }
+      }catch(err){
+        if(axios.isAxiosError(err) && err.response){
+          toast.error(err.response.data?.message || "Something went wrong");
+        }else{
+          toast.error("Unknown error occured");
+        }
+      }
+    }
+
+    fetchDoctors();
+  },[])
+
   useEffect(() => {
     async function fetchPrescritions(){
       try{
@@ -391,27 +423,27 @@ export default function PatientDashboard() {
                     >
                       <Avatar className="h-20 w-20 mb-4">
                         <AvatarImage
-                          src={doctor.avatar || "/placeholder.svg"}
+                          src={doctor.user.profilePicture || "/placeholder.svg"}
                         />
                         <AvatarFallback>
-                          {doctor.name
+                          {doctor.user.name
                             .split(" ")
                             .map((n) => n[0])
                             .join("")}
                         </AvatarFallback>
                       </Avatar>
                       <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                        {doctor.name}
+                        {doctor.user.name}
                       </h3>
                       <p className="text-blue-600 dark:text-blue-400 text-sm mb-2">
                         {doctor.specialty}
                       </p>
                       <div className="flex items-center gap-1 text-gray-600 dark:text-gray-300 text-sm mb-2">
-                        <MapPin className="h-4 w-4" /> {doctor.location}
+                        <MapPin className="h-4 w-4" /> {doctor.clinicLocation}
                       </div>
                       <div className="flex items-center gap-1 text-gray-600 dark:text-gray-300 text-sm mb-4">
                         <Star className="h-4 w-4 text-yellow-400 fill-current" />{" "}
-                        {doctor.rating} ({doctor.experience})
+                        ({doctor.experience})
                       </div>
                       <Link
                         to={`/book-appointment/${doctor.id}`}
@@ -419,9 +451,9 @@ export default function PatientDashboard() {
                       >
                         <Button
                           className="w-full"
-                          variant={doctor.available ? "default" : "outline"}
+                          variant={doctor.nextAvailable ? "default" : "outline"}
                         >
-                          {doctor.available ? (
+                          {doctor.nextAvailable ? (
                             <>
                               {" "}
                               <Heart className="h-4 w-4 mr-2" /> Book

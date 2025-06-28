@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "./ui/button";
 import { ThemeToggle } from "./theme-toggle";
 import { Heart, Menu, X } from "lucide-react";
@@ -75,6 +75,7 @@ export function Navbar() {
 
   const navLinks = getNavLinks();
   const homeLink = getHomeLink();
+  const location = useLocation();
 
   return (
     <nav className="fixed top-0 w-full bg-white/80 dark:bg-gray-900/80 backdrop-blur-md border-b border-gray-200 dark:border-gray-700 z-50">
@@ -92,15 +93,23 @@ export function Navbar() {
 
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center space-x-8">
-            {navLinks.map((link) => (
-              <Link
-                key={link.href}
-                to={link.href}
-                className="text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
-              >
-                {link.label}
-              </Link>
-            ))}
+            {navLinks.map((link) => {
+              const isActive = location.pathname === link.href;
+              
+              return (
+                <Link
+                  key={link.href}
+                  to={link.href}
+                  className={`transition-colors ${
+                    isActive
+                      ? 'text-blue-600 dark:text-blue-400 font-semibold'
+                      : 'text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400'
+                  }`}                
+                >
+                  {link.label}
+                </Link>
+              )
+            })}
           </div>
 
           {/* Desktop Actions */}
