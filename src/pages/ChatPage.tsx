@@ -17,7 +17,7 @@ import {
 } from "../components/ui/tabs";
 import { Avatar, AvatarFallback, AvatarImage } from "../components/ui/avatar";
 import { ScrollArea } from "../components/ui/scroll-area";
-import { MessageCircle, Bot, Users, Send, MapPin } from "lucide-react";
+import { MessageCircle, Bot, Users, Send, MapPin, Plus } from "lucide-react";
 import { Navbar } from "../components/navbar";
 import axios from "axios";
 import { toast } from "sonner";
@@ -27,6 +27,7 @@ import {
   offMessage,
   onMessage,
   sendMessage,
+  SendMessageToRoom,
 } from "@/sockets/socket";
 import { useAuthStore } from "@/store/authstore";
 
@@ -44,12 +45,19 @@ type DoctorData = {
 type SelectedChat =
   | "ai"
   | { type: "doctor"; data: DoctorData }
-  | { type: "room"; id: string; clinicLocation: string; count: number }; // Added type for community room
+  | { type: "room"; id: string; name: string; members : UserData[] , admin : UserData[] }; // Added type for community room
+
+type UserData = {
+  id : string,
+  name : string,
+  profilePicture : string
+}
 
 type CityRoomData = {
   id: string;
-  clinicLocation: string;
-  count: number;
+  name: string;
+  members : UserData[],
+  admin : UserData[]
 };
 
 type CityRoomApiResponse = {
@@ -159,7 +167,9 @@ export default function ChatPage() {
       typeof selectedChat === "object" &&
       selectedChat.type === "room"
     ) {
-      // Handle joining community rooms if needed, and clear messages
+      // Hand
+      // le joining community rooms if needed, and clear messages
+      joinRoom(selectedChat.id)
       setMessages([]);
     } else if (selectedChat === "ai") {
       // Clear messages for AI chat to display mock data
@@ -219,39 +229,38 @@ export default function ChatPage() {
           } as any,
         ]);
       }, 1000);
+    } else if (typeof selectedChat === "object" && selectedChat.type === "room") {
+        // Handle community room message sending
+        const payload = {
+            roomId: selectedChat.id, // Use the specific room ID
+            senderId: user.id,
+            username: user.name,
+            text: message.trim(),
+            messageType: "TEXT",
+            time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        };
+        SendMessageToRoom(payload);
+        setMessages((prev) => [...prev, { ...payload, type: 'user' }]);
+        setMessage("");
     }
-    // } else if (typeof selectedChat === "object" && selectedChat.type === "room") {
-    //     // Handle community room message sending
-    //     const payload = {
-    //         roomId: `room-${selectedChat.id}`, // Use the specific room ID
-    //         senderId: user.id,
-    //         username: user.name,
-    //         text: message.trim(),
-    //         messageType: "TEXT",
-    //         time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-    //     };
-    //     sendMessage(payload);
-    //     setMessages((prev) => [...prev, { ...payload, type: 'user' }]);
-    //     setMessage("");
-    // }
   };
+
 
   // Listen for incoming messages
   useEffect(() => {
     const handleIncomingMessage = (msg: FormattedMessage) => {
+      if (msg.senderId === user?.id) return;
       if (
         typeof selectedChat === "object" &&
         selectedChat.type === "doctor" &&
         generateRoomId(user?.id || "", selectedChat.data.userId) === msg.roomId
       ) {
-        if (msg.senderId === user?.id) return;
         setMessages((prev) => [...prev, msg]);
       } else if (
         typeof selectedChat === "object" &&
         selectedChat.type === "room" &&
-        `room-${selectedChat.id}` === msg.roomId
+        selectedChat.id === msg.roomId
       ) {
-        if (msg.senderId === user?.id) return;
         setMessages((prev) => [...prev, msg]);
       }
     };
@@ -386,9 +395,14 @@ export default function ChatPage() {
               <TabsContent value="community" className="flex-1 overflow-hidden">
                 <Card className="h-full flex flex-col">
                   <CardHeader className="pb-3">
-                    <CardTitle className="flex items-center gap-2 text-lg">
-                      <Users className="h-5 w-5 text-green-600" />
-                      City Rooms
+                    <CardTitle className="flex items-center justify-between text-lg">
+                      <div className="flex items-center gap-2">
+                        <Users className="h-5 w-5 text-green-600" />
+                        City Rooms
+                      </div>
+                      <div>
+                        <Plus className="bg-gray-200 rounded-full h-8 w-8 p-1" />
+                      </div>
                     </CardTitle>
                   </CardHeader>
 
@@ -400,7 +414,7 @@ export default function ChatPage() {
                           className={`p-3 rounded-lg cursor-pointer transition-colors ${
                             typeof selectedChat === "object" &&
                             selectedChat.type === "room" &&
-                            selectedChat.clinicLocation === room.clinicLocation
+                            selectedChat.name === room.name
                               ? "bg-green-100 dark:bg-green-900/30 border border-green-200 dark:border-green-700"
                               : "hover:bg-gray-100 dark:hover:bg-gray-800"
                           }`}
@@ -410,16 +424,16 @@ export default function ChatPage() {
                         >
                           <div className="space-y-2">
                             <h4 className="font-semibold text-gray-900 dark:text-white text-sm">
-                              {room.clinicLocation}
+                              {room.name}
                             </h4>
                             <div className="flex items-center gap-1">
                               <MapPin className="h-3 w-3 text-gray-400" />
                               <span className="text-xs text-gray-500 dark:text-gray-400">
-                                {room.clinicLocation}
+                                {room.name}
                               </span>
                             </div>
                             <Badge variant="secondary" className="text-xs">
-                              {room.count} members
+                              {room.members.length} members
                             </Badge>
                           </div>
                         </div>
@@ -485,11 +499,11 @@ export default function ChatPage() {
                       </div>
                       <div>
                         <CardTitle className="text-lg">
-                          {selectedChat.clinicLocation}
+                          {selectedChat.name}
                         </CardTitle>
                         <CardDescription>
-                          {selectedChat.count} members •{" "}
-                          {selectedChat.clinicLocation}
+                          {selectedChat.members.length} members •{" "}
+                          {selectedChat.name}
                         </CardDescription>
                       </div>
                     </div>
