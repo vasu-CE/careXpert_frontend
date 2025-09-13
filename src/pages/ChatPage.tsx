@@ -143,6 +143,54 @@ export default function ChatPage() {
   // AI Chat state
   const [aiMessages, setAiMessages] = useState<any[]>([]);
   const [isAiLoading, setIsAiLoading] = useState(false);
+  const [selectedLanguage, setSelectedLanguage] = useState(() => {
+    // Load language from localStorage or default to English
+    return localStorage.getItem("ai-chat-language") || "en";
+  });
+
+  // Language options for AI chat
+  const languageOptions = [
+    { code: "en", name: "English", flag: "🇺🇸" },
+    { code: "es", name: "Español", flag: "🇪🇸" },
+    { code: "fr", name: "Français", flag: "🇫🇷" },
+    { code: "de", name: "Deutsch", flag: "🇩🇪" },
+    { code: "it", name: "Italiano", flag: "🇮🇹" },
+    { code: "pt", name: "Português", flag: "🇵🇹" },
+    { code: "ru", name: "Русский", flag: "🇷🇺" },
+    { code: "ja", name: "日本語", flag: "🇯🇵" },
+    { code: "ko", name: "한국어", flag: "🇰🇷" },
+    { code: "zh", name: "中文", flag: "🇨🇳" },
+    { code: "ar", name: "العربية", flag: "🇸🇦" },
+    { code: "hi", name: "हिन्दी", flag: "🇮🇳" },
+  ];
+
+  // Handle language change and save to localStorage
+  const handleLanguageChange = (newLanguage: string) => {
+    setSelectedLanguage(newLanguage);
+    localStorage.setItem("ai-chat-language", newLanguage);
+  };
+
+  // Function to normalize severity values for badge styling
+  const normalizeSeverity = (severity: string) => {
+    const severityLower = severity.toLowerCase();
+    if (
+      severityLower.includes("severe") ||
+      severityLower.includes("grave") ||
+      severityLower.includes("severo") ||
+      severityLower.includes("sévère")
+    ) {
+      return "severe";
+    } else if (
+      severityLower.includes("moderate") ||
+      severityLower.includes("moderado") ||
+      severityLower.includes("modéré") ||
+      severityLower.includes("moderato")
+    ) {
+      return "moderate";
+    } else {
+      return "mild";
+    }
+  };
 
   // Fetch DM conversations for doctors
   useEffect(() => {
@@ -219,9 +267,9 @@ export default function ChatPage() {
     let response = `**Probable Causes:**\n${probableCauses
       .map((cause: string) => `• ${cause}`)
       .join("\n")}\n\n`;
-    response += `**Severity:**\n ${
-      severity.charAt(0).toUpperCase() + severity.slice(1)
-    }\n\n`;
+    // response += `**Severity:**\n ${
+    //   severity.charAt(0).toUpperCase() + severity.slice(1)
+    // }\n\n`;
     response += `**Recommendation:**\n${recommendation}\n\n`;
     response += `**Disclaimer:**\n${disclaimer}`;
 
@@ -245,10 +293,14 @@ export default function ChatPage() {
       };
       setAiMessages((prev) => [...prev, userMsg]);
 
+      // Clear the input immediately
+      setMessage("");
+
       const response = await axios.post(
         `${url}/ai-chat/process`,
         {
           symptoms: userMessage,
+          language: selectedLanguage,
         },
         {
           withCredentials: true,
@@ -469,7 +521,6 @@ export default function ChatPage() {
     } else if (selectedChat === "ai") {
       // Handle AI message sending
       await sendAiMessage(message.trim());
-      setMessage("");
     } else if (
       typeof selectedChat === "object" &&
       selectedChat.type === "room"
@@ -687,7 +738,7 @@ export default function ChatPage() {
                                   <AvatarFallback>
                                     {conversation.otherUser.name
                                       .split(" ")
-                                      .map((n) => n[0])
+                                      .map((n: string) => n[0])
                                       .join("")}
                                   </AvatarFallback>
                                 </Avatar>
@@ -792,17 +843,35 @@ export default function ChatPage() {
               {/* Chat Header */}
               <CardHeader className="border-b">
                 {selectedChat === "ai" && (
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-purple-600 rounded-full flex items-center justify-center">
-                      <Bot className="h-5 w-5 text-white" />
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-purple-600 rounded-full flex items-center justify-center">
+                        <Bot className="h-5 w-5 text-white" />
+                      </div>
+                      <div>
+                        <CardTitle className="text-lg">
+                          CareXpert AI Assistant
+                        </CardTitle>
+                        <CardDescription>
+                          Your personal health companion
+                        </CardDescription>
+                      </div>
                     </div>
-                    <div>
-                      <CardTitle className="text-lg">
-                        CareXpert AI Assistant
-                      </CardTitle>
-                      <CardDescription>
-                        Your personal health companion
-                      </CardDescription>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-gray-600 dark:text-gray-400">
+                        Language:
+                      </span>
+                      <select
+                        value={selectedLanguage}
+                        onChange={(e) => handleLanguageChange(e.target.value)}
+                        className="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                      >
+                        {languageOptions.map((lang) => (
+                          <option key={lang.code} value={lang.code}>
+                            {lang.flag} {lang.name}
+                          </option>
+                        ))}
+                      </select>
                     </div>
                   </div>
                 )}
@@ -876,9 +945,13 @@ export default function ChatPage() {
                                   <div className="mb-3">
                                     <Badge
                                       variant={
-                                        msg.aiData.severity === "severe"
+                                        normalizeSeverity(
+                                          msg.aiData.severity
+                                        ) === "severe"
                                           ? "destructive"
-                                          : msg.aiData.severity === "moderate"
+                                          : normalizeSeverity(
+                                              msg.aiData.severity
+                                            ) === "moderate"
                                           ? "default"
                                           : "secondary"
                                       }
