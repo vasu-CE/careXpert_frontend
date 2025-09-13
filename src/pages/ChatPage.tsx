@@ -151,18 +151,18 @@ export default function ChatPage() {
   // Language options for AI chat
   const languageOptions = [
     { code: "en", name: "English", flag: "🇺🇸" },
-    { code: "es", name: "Español", flag: "🇪🇸" },
-    { code: "fr", name: "Français", flag: "🇫🇷" },
-    { code: "de", name: "Deutsch", flag: "🇩🇪" },
-    { code: "it", name: "Italiano", flag: "🇮🇹" },
-    { code: "pt", name: "Português", flag: "🇵🇹" },
-    { code: "ru", name: "Русский", flag: "🇷🇺" },
-    { code: "ja", name: "日本語", flag: "🇯🇵" },
-    { code: "ko", name: "한국어", flag: "🇰🇷" },
-    { code: "zh", name: "中文", flag: "🇨🇳" },
-    { code: "ar", name: "العربية", flag: "🇸🇦" },
     { code: "hi", name: "हिन्दी", flag: "🇮🇳" },
+    { code: "gu", name: "ગુજરાતી", flag: "🇮🇳" },
+    { code: "pa", name: "ਪੰਜਾਬੀ", flag: "🇮🇳" },
+    { code: "mr", name: "मराठी", flag: "🇮🇳" },
+    { code: "bn", name: "বাংলা", flag: "🇮🇳" },
+    { code: "ta", name: "தமிழ்", flag: "🇮🇳" },
+    { code: "te", name: "తెలుగు", flag: "🇮🇳" },
+    { code: "kn", name: "ಕನ್ನಡ", flag: "🇮🇳" },
+    { code: "ml", name: "മലയാളം", flag: "🇮🇳" },
+    { code: "or", name: "ଓଡ଼ିଆ", flag: "🇮🇳" },
   ];
+  
 
   // Handle language change and save to localStorage
   const handleLanguageChange = (newLanguage: string) => {
