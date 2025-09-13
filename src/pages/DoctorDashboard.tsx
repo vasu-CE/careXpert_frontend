@@ -24,6 +24,7 @@ import {
   Clock,
   Settings,
   Search,
+  Send,
 } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
@@ -35,6 +36,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../components/ui/select";
+import { ScrollArea } from "../components/ui/scroll-area";
 import axios from "axios";
 import { toast } from "sonner";
 import { useAuthStore } from "@/store/authstore";
@@ -57,6 +59,7 @@ type AppointmentApiResponse = {
   success: boolean;
   data: Appointment[];
 };
+
 export default function DoctorDashboard() {
   const navigate = useNavigate();
   // const { user, isLoading } = useAuth() // Assuming a different auth context for now
@@ -70,6 +73,7 @@ export default function DoctorDashboard() {
   const [upcomingAppointments, setUpcomingApppointments] = useState<
     Appointment[]
   >([]);
+
   const url = `${import.meta.env.VITE_BASE_URL}/api/doctor`;
   // Redirect if not logged in or not a doctor (using dummy logic for now)
   useEffect(() => {
@@ -107,6 +111,7 @@ export default function DoctorDashboard() {
 
     fetchAppointments();
   }, []);
+
   const patientChats = [
     {
       id: 1,
@@ -226,7 +231,7 @@ export default function DoctorDashboard() {
 
         {/* Tabs structure with Appointments tab content */}
         <Tabs defaultValue="appointments" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4 lg:w-auto lg:grid-cols-4">
+          <TabsList className="grid w-full grid-cols-3 lg:w-auto lg:grid-cols-3">
             <TabsTrigger
               value="appointments"
               className="flex items-center gap-2"
@@ -244,10 +249,6 @@ export default function DoctorDashboard() {
             <TabsTrigger value="patients" className="flex items-center gap-2">
               <Users className="h-4 w-4" />
               Patients
-            </TabsTrigger>
-            <TabsTrigger value="chat" className="flex items-center gap-2">
-              <MessageCircle className="h-4 w-4" />
-              Messages
             </TabsTrigger>
           </TabsList>
 
@@ -420,15 +421,6 @@ export default function DoctorDashboard() {
             <Card>
               <CardContent className="p-6">
                 <p>Patients tab content placeholder</p>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* Messages Tab Placeholder */}
-          <TabsContent value="chat">
-            <Card>
-              <CardContent className="p-6">
-                <p>Messages tab content placeholder</p>
               </CardContent>
             </Card>
           </TabsContent>

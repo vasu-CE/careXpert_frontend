@@ -28,6 +28,9 @@ import {
   onMessage,
   sendMessage,
   SendMessageToRoom,
+  loadOneOnOneChatHistory,
+  loadCityChatHistory,
+  loadRoomChatHistory,
 } from "@/sockets/socket";
 import { useAuthStore } from "@/store/authstore";
 
@@ -45,19 +48,25 @@ type DoctorData = {
 type SelectedChat =
   | "ai"
   | { type: "doctor"; data: DoctorData }
-  | { type: "room"; id: string; name: string; members : UserData[] , admin : UserData[] }; // Added type for community room
+  | {
+      type: "room";
+      id: string;
+      name: string;
+      members: UserData[];
+      admin: UserData[];
+    }; // Added type for community room
 
 type UserData = {
-  id : string,
-  name : string,
-  profilePicture : string
-}
+  id: string;
+  name: string;
+  profilePicture: string;
+};
 
 type CityRoomData = {
   id: string;
   name: string;
-  members : UserData[],
-  admin : UserData[]
+  members: UserData[];
+  admin: UserData[];
 };
 
 type CityRoomApiResponse = {
@@ -73,6 +82,10 @@ export default function ChatPage() {
   const [selectedChat, setSelectedChat] = useState<SelectedChat>("ai");
   const [messages, setMessages] = useState<FormattedMessage[]>([]);
   const [cityRoom, setCityRoom] = useState<CityRoomData[]>([]);
+
+  // DM conversation state for doctors
+  const [dmConversations, setDmConversations] = useState<any[]>([]);
+  const [selectedConversation, setSelectedConversation] = useState<any>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null); // Ref for auto-scrolling
   const url = `${import.meta.env.VITE_BASE_URL}/api`;
@@ -100,15 +113,21 @@ export default function ChatPage() {
 
   useEffect(() => {
     async function fetchCity() {
+      if (!user) return;
+
       try {
-        const res = await axios.get<CityRoomApiResponse>(
-          `${url}/doctor/city-rooms`,
-          { withCredentials: true }
-        );
+        const endpoint =
+          user.role === "DOCTOR"
+            ? `${url}/doctor/city-rooms`
+            : `${url}/patient/city-rooms`;
+
+        const res = await axios.get<CityRoomApiResponse>(endpoint, {
+          withCredentials: true,
+        });
 
         if (res.data.success) {
           const data = res.data.data;
-          setCityRoom(Array.isArray(data) ? data : [data])
+          setCityRoom(Array.isArray(data) ? data : [data]);
         }
       } catch (err) {
         if (axios.isAxiosError(err) && err.response) {
@@ -119,65 +138,312 @@ export default function ChatPage() {
       }
     }
     fetchCity();
-  }, []);
+  }, [user]);
+
+  // AI Chat state
+  const [aiMessages, setAiMessages] = useState<any[]>([]);
+  const [isAiLoading, setIsAiLoading] = useState(false);
+
+  // Fetch DM conversations for doctors
+  useEffect(() => {
+    if (user?.role === "DOCTOR") {
+      fetchDmConversations();
+    }
+  }, [user]);
 
   // Auto-scroll to bottom of messages
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, selectedChat]); // Scroll when messages or selectedChat changes
+  }, [messages, aiMessages, selectedChat]); // Scroll when messages, aiMessages, or selectedChat changes
 
-  const aiMessages = [
-    {
-      id: 1,
-      type: "ai",
-      message:
-        "Hello! I'm CareXpert AI, your health assistant. How can I help you today?",
-      time: "Just now",
-    },
-    {
-      id: 2,
-      type: "user",
-      message: "I've been having headaches lately. What could be causing them?",
-      time: "Just now",
-    },
-    {
-      id: 3,
-      type: "ai",
-      message:
-        "Headaches can have various causes including stress, dehydration, lack of sleep, or eye strain. Here are some common factors to consider:\n\n• Stress and tension\n• Dehydration\n• Poor sleep patterns\n• Eye strain from screens\n• Certain foods or drinks\n\nIf headaches persist or worsen, I recommend consulting with a healthcare professional for proper evaluation.",
-      time: "Just now",
-    },
-  ];
+  // Load AI chat history when AI tab is selected
+  useEffect(() => {
+    if (selectedChat === "ai") {
+      loadAiChatHistory();
+    }
+  }, [selectedChat]);
+
+  // Function to load AI chat history
+  const loadAiChatHistory = async () => {
+    try {
+      const response = await axios.get(`${url}/ai-chat/history`, {
+        withCredentials: true,
+      });
+      if (response.data.success) {
+        const formattedMessages = response.data.data.chats
+          .map((chat: any) => [
+            {
+              id: `${chat.id}-user`,
+              type: "user",
+              message: chat.userMessage,
+              time: new Date(chat.createdAt).toLocaleTimeString([], {
+                hour: "2-digit",
+                minute: "2-digit",
+              }),
+            },
+            {
+              id: `${chat.id}-ai`,
+              type: "ai",
+              message: formatAiResponse(chat),
+              time: new Date(chat.createdAt).toLocaleTimeString([], {
+                hour: "2-digit",
+                minute: "2-digit",
+              }),
+              aiData: chat,
+            },
+          ])
+          .flat();
+        setAiMessages(formattedMessages);
+      }
+    } catch (error) {
+      console.error("Error loading AI chat history:", error);
+      // Show welcome message if no history
+      setAiMessages([
+        {
+          id: "welcome",
+          type: "ai",
+          message:
+            "Hello! I'm CareXpert AI, your health assistant. Describe your symptoms and I'll help analyze them for you.",
+          time: "Just now",
+        },
+      ]);
+    }
+  };
+
+  // Function to format AI response for display
+  const formatAiResponse = (chat: any) => {
+    // Handle both API response format (probable_causes) and database format (probableCauses)
+    const probableCauses = chat.probable_causes || chat.probableCauses || [];
+    const { severity, recommendation, disclaimer } = chat;
+
+    let response = `**Probable Causes:**\n${probableCauses
+      .map((cause: string) => `• ${cause}`)
+      .join("\n")}\n\n`;
+    response += `**Severity:**\n ${
+      severity.charAt(0).toUpperCase() + severity.slice(1)
+    }\n\n`;
+    response += `**Recommendation:**\n${recommendation}\n\n`;
+    response += `**Disclaimer:**\n${disclaimer}`;
+
+    return response;
+  };
+
+  // Function to send message to AI
+  const sendAiMessage = async (userMessage: string) => {
+    try {
+      setIsAiLoading(true);
+
+      // Add user message immediately
+      const userMsg = {
+        id: `user-${Date.now()}`,
+        type: "user",
+        message: userMessage,
+        time: new Date().toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+        }),
+      };
+      setAiMessages((prev) => [...prev, userMsg]);
+
+      const response = await axios.post(
+        `${url}/ai-chat/process`,
+        {
+          symptoms: userMessage,
+        },
+        {
+          withCredentials: true,
+        }
+      );
+
+      if (response.data.success) {
+        const aiData = response.data.data;
+        const aiMsg = {
+          id: `ai-${Date.now()}`,
+          type: "ai",
+          message: formatAiResponse(aiData),
+          time: new Date().toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit",
+          }),
+          aiData: aiData,
+        };
+        setAiMessages((prev) => [...prev, aiMsg]);
+      }
+    } catch (error) {
+      console.error("Error sending AI message:", error);
+      toast.error("Failed to get AI response. Please try again.");
+
+      // Add error message
+      const errorMsg = {
+        id: `error-${Date.now()}`,
+        type: "ai",
+        message:
+          "Sorry, I'm having trouble processing your request. Please try again.",
+        time: new Date().toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+        }),
+      };
+      setAiMessages((prev) => [...prev, errorMsg]);
+    } finally {
+      setIsAiLoading(false);
+    }
+  };
 
   function generateRoomId(id1: string, id2: string) {
     return [id1, id2].sort().join("_");
-  } 
+  }
 
-  // Join room when selected chat is a doctor chat
-  useEffect(() => {
-    if (
-      user &&
-      typeof selectedChat === "object" &&
-      selectedChat.type === "doctor"
-    ) {
-      const roomId = generateRoomId(user.id, selectedChat.data.userId);
-      joinRoom(roomId);
-      setMessages([]);
-    } else if (
-      typeof selectedChat === "object" &&
-      selectedChat.type === "room"
-    ) {
-      // Hand
-      // le joining community rooms if needed, and clear messages
-      joinRoom(selectedChat.id)
-      setMessages([]);
-    } else if (selectedChat === "ai") {
-      // Clear messages for AI chat to display mock data
-      setMessages([]);
+  // Function to fetch DM conversations for doctors
+  const fetchDmConversations = async () => {
+    try {
+      const response = await axios.get(`${url}/chat/doctor/conversations`, {
+        withCredentials: true,
+      });
+      if (response.data.success) {
+        setDmConversations(response.data.data.conversations);
+      }
+    } catch (error) {
+      console.error("Error fetching DM conversations:", error);
     }
+  };
+
+  // Function to handle conversation selection
+  const handleConversationSelect = async (conversation: any) => {
+    setSelectedConversation(conversation);
+    setSelectedChat({
+      type: "doctor",
+      data: {
+        id: conversation.otherUser.id,
+        userId: conversation.otherUser.id,
+        specialty: "Patient",
+        clinicLocation: "",
+        user: {
+          name: conversation.otherUser.name,
+          profilePicture: conversation.otherUser.profilePicture,
+        },
+      },
+    });
+    setMessages([]);
+
+    // Join the room and load history
+    const roomId = generateRoomId(user?.id || "", conversation.otherUser.id);
+    joinRoom(roomId);
+    await loadConversationHistory(conversation.otherUser.id);
+  };
+
+  // Function to load chat history for a conversation
+  const loadConversationHistory = async (patientId: string) => {
+    try {
+      const response = await loadOneOnOneChatHistory(patientId);
+      if (response.success) {
+        const formattedMessages = response.data.messages.map((msg: any) => ({
+          roomId: generateRoomId(user?.id || "", patientId),
+          senderId: msg.senderId,
+          receiverId: msg.receiverId,
+          username: msg.sender.name,
+          text: msg.message,
+          time: new Date(msg.timestamp).toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit",
+          }),
+          messageType: msg.messageType,
+          imageUrl: msg.imageUrl,
+        }));
+        setMessages(formattedMessages);
+      }
+    } catch (error) {
+      console.error("Error loading conversation history:", error);
+    }
+  };
+
+  // Load chat history and join room when selected chat changes
+  useEffect(() => {
+    const loadChatHistory = async () => {
+      console.log("ChatPage - User:", user);
+      console.log("ChatPage - Selected Chat:", selectedChat);
+
+      if (
+        user &&
+        typeof selectedChat === "object" &&
+        selectedChat.type === "doctor"
+      ) {
+        const roomId = generateRoomId(user.id, selectedChat.data.userId);
+        joinRoom(roomId);
+
+        try {
+          // Load 1-on-1 chat history
+          console.log(
+            "Loading chat history for doctor:",
+            selectedChat.data.userId
+          );
+          const historyResponse = await loadOneOnOneChatHistory(
+            selectedChat.data.userId
+          );
+          console.log("Chat history response:", historyResponse);
+          if (historyResponse.success) {
+            const formattedMessages = historyResponse.data.messages.map(
+              (msg: any) => ({
+                roomId: roomId,
+                senderId: msg.senderId,
+                receiverId: msg.receiverId,
+                username: msg.sender.name,
+                text: msg.message,
+                time: new Date(msg.timestamp).toLocaleTimeString([], {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                }),
+                messageType: msg.messageType,
+                imageUrl: msg.imageUrl,
+              })
+            );
+            setMessages(formattedMessages);
+          }
+        } catch (error) {
+          console.error("Error loading doctor chat history:", error);
+          setMessages([]);
+        }
+      } else if (
+        typeof selectedChat === "object" &&
+        selectedChat.type === "room"
+      ) {
+        joinRoom(selectedChat.id);
+
+        try {
+          // Load city room chat history
+          const historyResponse = await loadCityChatHistory(selectedChat.name);
+          if (historyResponse.success) {
+            const formattedMessages = historyResponse.data.messages.map(
+              (msg: any) => ({
+                roomId: selectedChat.id,
+                senderId: msg.senderId,
+                receiverId: null,
+                username: msg.sender.name,
+                text: msg.message,
+                time: new Date(msg.timestamp).toLocaleTimeString([], {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                }),
+                messageType: msg.messageType,
+                imageUrl: msg.imageUrl,
+              })
+            );
+            setMessages(formattedMessages);
+          }
+        } catch (error) {
+          console.error("Error loading city chat history:", error);
+          setMessages([]);
+        }
+      } else if (selectedChat === "ai") {
+        // Clear messages for AI chat to display mock data
+        setMessages([]);
+      }
+    };
+
+    loadChatHistory();
   }, [selectedChat, user]);
 
-  const handleSendMessage = () => {
+  const handleSendMessage = async () => {
     if (!message.trim() || !selectedChat || !user) return;
 
     if (typeof selectedChat === "object" && selectedChat.type === "doctor") {
@@ -201,50 +467,30 @@ export default function ChatPage() {
       setMessages((prev) => [...prev, { ...payload, type: "user" }]);
       setMessage("");
     } else if (selectedChat === "ai") {
-      // Handle AI message sending (this part would usually involve an API call to your AI backend)
-      const userMessage = {
-        id: Date.now(), // Unique ID for mock message
-        type: "user",
-        message: message.trim(),
+      // Handle AI message sending
+      await sendAiMessage(message.trim());
+      setMessage("");
+    } else if (
+      typeof selectedChat === "object" &&
+      selectedChat.type === "room"
+    ) {
+      // Handle community room message sending
+      const payload = {
+        roomId: selectedChat.id, // Use the specific room ID
+        senderId: user.id,
+        username: user.name,
+        text: message.trim(),
+        messageType: "TEXT",
         time: new Date().toLocaleTimeString([], {
           hour: "2-digit",
           minute: "2-digit",
         }),
       };
-      setMessages((prev) => [...prev, userMessage as any]); // Cast to any to fit mock data type
+      SendMessageToRoom(payload);
+      setMessages((prev) => [...prev, { ...payload, type: "user" }]);
       setMessage("");
-      // Simulate AI response
-      setTimeout(() => {
-        setMessages((prev) => [
-          ...prev,
-          {
-            id: Date.now() + 1,
-            type: "ai",
-            message:
-              "Thank you for your message. I'm still learning and will get back to you shortly.",
-            time: new Date().toLocaleTimeString([], {
-              hour: "2-digit",
-              minute: "2-digit",
-            }),
-          } as any,
-        ]);
-      }, 1000);
-    } else if (typeof selectedChat === "object" && selectedChat.type === "room") {
-        // Handle community room message sending
-        const payload = {
-            roomId: selectedChat.id, // Use the specific room ID
-            senderId: user.id,
-            username: user.name,
-            text: message.trim(),
-            messageType: "TEXT",
-            time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        };
-        SendMessageToRoom(payload);
-        setMessages((prev) => [...prev, { ...payload, type: 'user' }]);
-        setMessage("");
     }
   };
-
 
   // Listen for incoming messages
   useEffect(() => {
@@ -281,13 +527,22 @@ export default function ChatPage() {
           {/* Chat Sidebar */}
           <div className="lg:col-span-1 flex flex-col">
             <Tabs defaultValue="ai" className="space-y-4 flex flex-col flex-1">
-              <TabsList className="grid w-full grid-cols-3">
+              <TabsList
+                className={`grid w-full ${
+                  user?.role === "DOCTOR" ? "grid-cols-4" : "grid-cols-3"
+                }`}
+              >
                 <TabsTrigger value="ai" className="text-xs">
                   AI
                 </TabsTrigger>
                 <TabsTrigger value="doctors" className="text-xs">
                   Doctors
                 </TabsTrigger>
+                {user?.role === "DOCTOR" && (
+                  <TabsTrigger value="patients" className="text-xs">
+                    Patients
+                  </TabsTrigger>
+                )}
                 <TabsTrigger value="community" className="text-xs">
                   Community
                 </TabsTrigger>
@@ -390,6 +645,90 @@ export default function ChatPage() {
                   </CardContent>
                 </Card>
               </TabsContent>
+
+              {/* Patients Tab - Only for Doctors */}
+              {user?.role === "DOCTOR" && (
+                <TabsContent
+                  value="patients"
+                  className="flex-1 overflow-hidden"
+                >
+                  <Card className="h-full flex flex-col">
+                    <CardHeader className="pb-3">
+                      <CardTitle className="flex items-center gap-2 text-lg">
+                        <Users className="h-5 w-5 text-green-600" />
+                        Patient Messages
+                      </CardTitle>
+                      <CardDescription>Chat with your patients</CardDescription>
+                    </CardHeader>
+                    <CardContent className="p-0">
+                      <ScrollArea className="h-[500px]">
+                        {dmConversations.length > 0 ? (
+                          dmConversations.map((conversation) => (
+                            <div
+                              key={conversation.otherUser.id}
+                              className={`p-4 border-b cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors ${
+                                selectedConversation?.otherUser.id ===
+                                conversation.otherUser.id
+                                  ? "bg-green-50 dark:bg-green-900/20 border-l-4 border-l-green-500"
+                                  : ""
+                              }`}
+                              onClick={() =>
+                                handleConversationSelect(conversation)
+                              }
+                            >
+                              <div className="flex items-center gap-3">
+                                <Avatar className="h-10 w-10">
+                                  <AvatarImage
+                                    src={
+                                      conversation.otherUser.profilePicture ||
+                                      "/placeholder.svg"
+                                    }
+                                  />
+                                  <AvatarFallback>
+                                    {conversation.otherUser.name
+                                      .split(" ")
+                                      .map((n) => n[0])
+                                      .join("")}
+                                  </AvatarFallback>
+                                </Avatar>
+                                <div className="flex-1 min-w-0">
+                                  <h4 className="font-semibold text-gray-900 dark:text-white text-sm">
+                                    {conversation.otherUser.name}
+                                  </h4>
+                                  <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                                    {conversation.lastMessage.message}
+                                  </p>
+                                  <p className="text-xs text-gray-400 dark:text-gray-500">
+                                    {new Date(
+                                      conversation.lastMessage.timestamp
+                                    ).toLocaleDateString()}
+                                  </p>
+                                </div>
+                                {conversation.unreadCount > 0 && (
+                                  <Badge
+                                    variant="destructive"
+                                    className="text-xs"
+                                  >
+                                    {conversation.unreadCount}
+                                  </Badge>
+                                )}
+                              </div>
+                            </div>
+                          ))
+                        ) : (
+                          <div className="p-6 text-center text-gray-500 dark:text-gray-400">
+                            <Users className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                            <p>No conversations yet</p>
+                            <p className="text-sm">
+                              Patients will appear here when they message you
+                            </p>
+                          </div>
+                        )}
+                      </ScrollArea>
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+              )}
 
               {/* Community Tab */}
               <TabsContent value="community" className="flex-1 overflow-hidden">
@@ -513,36 +852,109 @@ export default function ChatPage() {
               {/* Messages Area */}
               <CardContent className="flex-1 p-4 overflow-y-auto ">
                 <ScrollArea className="h-full ">
-                  {selectedChat === "ai" &&
-                    aiMessages.map((msg) => (
-                      <div
-                        key={msg.id}
-                        className={`flex ${
-                          msg.type === "user" ? "justify-end" : "justify-start"
-                        }`}
-                      >
+                  {selectedChat === "ai" && (
+                    <>
+                      {aiMessages.map((msg) => (
                         <div
-                          className={`max-w-[80%] p-3 rounded-lg ${
+                          key={msg.id}
+                          className={`flex mb-4 ${
                             msg.type === "user"
-                              ? "bg-blue-600 text-white"
-                              : "bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white"
+                              ? "justify-end"
+                              : "justify-start"
                           }`}
                         >
-                          <p className="text-sm whitespace-pre-wrap">
-                            {msg.message}
-                          </p>
-                          <p
-                            className={`text-xs mt-1 ${
+                          <div
+                            className={`max-w-[80%] p-3 rounded-lg ${
                               msg.type === "user"
-                                ? "text-blue-100"
-                                : "text-gray-500 dark:text-gray-400"
+                                ? "bg-blue-600 text-white"
+                                : "bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white"
                             }`}
                           >
-                            {msg.time}
-                          </p>
+                            {msg.type === "ai" ? (
+                              <div className="text-sm">
+                                {msg.aiData && (
+                                  <div className="mb-3">
+                                    <Badge
+                                      variant={
+                                        msg.aiData.severity === "severe"
+                                          ? "destructive"
+                                          : msg.aiData.severity === "moderate"
+                                          ? "default"
+                                          : "secondary"
+                                      }
+                                      className="mb-2"
+                                    >
+                                      {msg.aiData.severity
+                                        .charAt(0)
+                                        .toUpperCase() +
+                                        msg.aiData.severity.slice(1)}{" "}
+                                      Severity
+                                    </Badge>
+                                  </div>
+                                )}
+                                {msg.message
+                                  .split("\n")
+                                  .map((line: string, index: number) => {
+                                    if (
+                                      line.startsWith("**") &&
+                                      line.endsWith("**")
+                                    ) {
+                                      return (
+                                        <div
+                                          key={index}
+                                          className="font-semibold text-purple-600 dark:text-purple-400 mb-2"
+                                        >
+                                          {line.replace(/\*\*/g, "")}
+                                        </div>
+                                      );
+                                    } else if (line.startsWith("•")) {
+                                      return (
+                                        <div key={index} className="ml-4 mb-1">
+                                          {line}
+                                        </div>
+                                      );
+                                    } else if (line.trim() === "") {
+                                      return <br key={index} />;
+                                    } else {
+                                      return (
+                                        <div key={index} className="mb-2">
+                                          {line}
+                                        </div>
+                                      );
+                                    }
+                                  })}
+                              </div>
+                            ) : (
+                              <p className="text-sm whitespace-pre-wrap">
+                                {msg.message}
+                              </p>
+                            )}
+                            <p
+                              className={`text-xs mt-1 ${
+                                msg.type === "user"
+                                  ? "text-blue-100"
+                                  : "text-gray-500 dark:text-gray-400"
+                              }`}
+                            >
+                              {msg.time}
+                            </p>
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      ))}
+                      {isAiLoading && (
+                        <div className="flex justify-start mb-4">
+                          <div className="bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white p-3 rounded-lg max-w-[80%]">
+                            <div className="flex items-center gap-2">
+                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-purple-600"></div>
+                              <span className="text-sm">
+                                AI is analyzing your symptoms...
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  )}
                   {/* doctor and community chats */}
                   {typeof selectedChat === "object" &&
                     (selectedChat.type === "doctor" ||
