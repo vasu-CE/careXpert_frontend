@@ -40,23 +40,23 @@ import { toast } from "sonner";
 import { useAuthStore } from "@/store/authstore";
 
 type Appointment = {
-  id : string,
-  status : string,
-  patientName : string,
-  notes : string,
-  profilePicture : string,
+  id: string;
+  status: string;
+  patientName: string;
+  notes: string;
+  profilePicture: string;
   appointmentTime: {
-    startTime: string; 
+    startTime: string;
     endTime: string;
   };
-}
+};
 
 type AppointmentApiResponse = {
-  statusCode : number,
-  message : string,
-  success : boolean,
-  data : Appointment[]
-}
+  statusCode: number;
+  message: string;
+  success: boolean;
+  data: Appointment[];
+};
 export default function DoctorDashboard() {
   const navigate = useNavigate();
   // const { user, isLoading } = useAuth() // Assuming a different auth context for now
@@ -66,9 +66,11 @@ export default function DoctorDashboard() {
   const [selectedTimeSlot, setSelectedTimeSlot] = useState(""); // Keep this state for future UI
   const [searchQuery, setSearchQuery] = useState(""); // Keep this state for future UI
 
-  const [todayAppointments , setTodayAppointments] = useState<Appointment[]>([]);
-  const [upcomingAppointments , setUpcomingApppointments] = useState<Appointment[]>([]);
-  const url = `${import.meta.env.VITE_BASE_URL}/api/doctor`
+  const [todayAppointments, setTodayAppointments] = useState<Appointment[]>([]);
+  const [upcomingAppointments, setUpcomingApppointments] = useState<
+    Appointment[]
+  >([]);
+  const url = `${import.meta.env.VITE_BASE_URL}/api/doctor`;
   // Redirect if not logged in or not a doctor (using dummy logic for now)
   useEffect(() => {
     if (!isLoading && (!user || user.role !== "DOCTOR")) {
@@ -77,28 +79,34 @@ export default function DoctorDashboard() {
   }, [user, isLoading, navigate]);
 
   useEffect(() => {
-    async function fetchAppointments(){
-      try{
-        const todayRes = await axios.get<AppointmentApiResponse>(`${url}/appointments` , {withCredentials : true});
-        if(todayRes.data.success){
+    async function fetchAppointments() {
+      try {
+        const todayRes = await axios.get<AppointmentApiResponse>(
+          `${url}/appointments`,
+          { withCredentials: true }
+        );
+        if (todayRes.data.success) {
           setTodayAppointments(todayRes.data.data);
         }
-        
-        const upcomingRes = await axios.get<AppointmentApiResponse>(`${url}/appointments?upcoming=true` , {withCredentials : true});
-        if(upcomingRes.data.success){
+
+        const upcomingRes = await axios.get<AppointmentApiResponse>(
+          `${url}/appointments?upcoming=true`,
+          { withCredentials: true }
+        );
+        if (upcomingRes.data.success) {
           setUpcomingApppointments(upcomingRes.data.data);
         }
-      }catch(err){
-        if(axios.isAxiosError(err) && err.response){
+      } catch (err) {
+        if (axios.isAxiosError(err) && err.response) {
           toast.error(err.response.data?.message || "Something went wrong");
-        }else{
+        } else {
           toast.error("Unknown error occured");
         }
       }
     }
 
     fetchAppointments();
-  },[])
+  }, []);
   const patientChats = [
     {
       id: 1,
@@ -254,10 +262,10 @@ export default function DoctorDashboard() {
                     Today's Appointments
                   </CardTitle>
                   <CardDescription>
-                    {new Date().toLocaleDateString('en-US' ,{
-                      year : 'numeric',
-                      month : 'long',
-                      day : 'numeric'
+                    {new Date().toLocaleDateString("en-US", {
+                      year: "numeric",
+                      month: "long",
+                      day: "numeric",
                     })}
                   </CardDescription>
                 </CardHeader>
@@ -270,7 +278,9 @@ export default function DoctorDashboard() {
                       <div className="flex items-center gap-3">
                         <Avatar>
                           <AvatarImage
-                            src={appointment.profilePicture || "/placeholder.svg"}
+                            src={
+                              appointment.profilePicture || "/placeholder.svg"
+                            }
                           />
                           <AvatarFallback>
                             {appointment.patientName
@@ -285,36 +295,41 @@ export default function DoctorDashboard() {
                           </h4>
                           <p className="text-sm text-gray-600 dark:text-gray-300">
                             {/* {new Date(appointment.appointmentTime.startTime).toLocaleDateString()} {" "} */}
-                            {new Date(appointment.appointmentTime.startTime).toLocaleTimeString('en-US' , {
-                              hour : 'numeric',
-                              minute : '2-digit'
-                            }).replace(/ (AM|PM)/, '')} {" to "}
-                            {new Date(appointment.appointmentTime.endTime).toLocaleTimeString('en-US' , {
-                              hour : 'numeric',
-                              minute : '2-digit'
+                            {new Date(appointment.appointmentTime.startTime)
+                              .toLocaleTimeString("en-US", {
+                                hour: "numeric",
+                                minute: "2-digit",
+                              })
+                              .replace(/ (AM|PM)/, "")}{" "}
+                            {" to "}
+                            {new Date(
+                              appointment.appointmentTime.endTime
+                            ).toLocaleTimeString("en-US", {
+                              hour: "numeric",
+                              minute: "2-digit",
                             })}
                           </p>
-                          {appointment.notes && 
-                            <Badge>
+                          {appointment.notes && (
+                            <Badge className="bg-gray-200 text-black dark:bg-gray-600 dark:text-white/90">
                               {appointment.notes}
                             </Badge>
-                          }
+                          )}
                         </div>
                       </div>
                       <div className="flex flex-col gap-2">
-                      <Badge
-                        variant={
-                          appointment.status === "COMPLETED"
-                            ? "default"
-                            : appointment.status === "PENDING"
-                            ? "secondary"
-                            : appointment.status === "CANCELLED"
-                            ? "destructive"
-                            : "outline"
-                        }
-                      >
-                        {appointment.status}
-                      </Badge>
+                        <Badge
+                          variant={
+                            appointment.status === "COMPLETED"
+                              ? "default"
+                              : appointment.status === "PENDING"
+                              ? "secondary"
+                              : appointment.status === "CANCELLED"
+                              ? "destructive"
+                              : "outline"
+                          }
+                        >
+                          {appointment.status}
+                        </Badge>
 
                         <Button variant="outline" size="sm">
                           <Settings className="h-4 w-4 mr-2" /> Manage
@@ -342,7 +357,9 @@ export default function DoctorDashboard() {
                       <div className="flex items-center gap-3">
                         <Avatar>
                           <AvatarImage
-                            src={appointment.profilePicture || "/placeholder.svg"}
+                            src={
+                              appointment.profilePicture || "/placeholder.svg"
+                            }
                           />
                           <AvatarFallback>
                             {appointment.patientName
@@ -356,17 +373,21 @@ export default function DoctorDashboard() {
                             {appointment.patientName}
                           </h4>
                           <p className="text-sm text-gray-600 dark:text-gray-300">
-                            {new Date(appointment.appointmentTime.startTime).toLocaleDateString()} {" "}
-                            {new Date(appointment.appointmentTime.startTime).toLocaleTimeString('en-US' , {
-                              hour : 'numeric',
-                              minute : '2-digit'
+                            {new Date(
+                              appointment.appointmentTime.startTime
+                            ).toLocaleDateString()}{" "}
+                            {new Date(
+                              appointment.appointmentTime.startTime
+                            ).toLocaleTimeString("en-US", {
+                              hour: "numeric",
+                              minute: "2-digit",
                             })}
                           </p>
-                          {appointment.notes && 
-                            <Badge>
+                          {appointment.notes && (
+                            <Badge className="bg-gray-200 text-black dark:bg-gray-600 dark:text-white/90">
                               {appointment.notes}
                             </Badge>
-                          }
+                          )}
                         </div>
                       </div>
                       <Badge

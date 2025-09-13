@@ -58,6 +58,7 @@ export function Navbar() {
         return [
           { href: "/dashboard/doctor", label: "Dashboard" },
           { href: "/dashboard/doctor?tab=appointments", label: "Appointments" },
+          { href: "/chat", label: "Chat" },
           { href: "/dashboard/doctor?tab=patients", label: "Patients" },
           { href: "/profile/doctor", label: "Profile" },
         ];

@@ -401,7 +401,7 @@ export default function ChatPage() {
                         City Rooms
                       </div>
                       <div>
-                        <Plus className="bg-gray-200 rounded-full h-8 w-8 p-1" />
+                        <Plus className="bg-gray-200 dark:bg-gray-700 rounded-full h-8 w-8 p-1" />
                       </div>
                     </CardTitle>
                   </CardHeader>

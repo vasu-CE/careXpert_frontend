@@ -15,6 +15,7 @@ import DashboardPage from "./pages/DashboardPage";
 import AuthPage from "./pages/AuthPage";
 import PatientDashboard from "./pages/PatientDashboard";
 import DoctorDashboard from "./pages/DoctorDashboard";
+import StartCall from "./pages/StartCall";
 
 export default function AppRoutes() {
   return (
@@ -31,7 +32,9 @@ export default function AppRoutes() {
         <Route path="/chat" element={<ChatPage />} />
         <Route path="/dashboard/patient" element={<PatientDashboard />} />
         <Route path="/dashboard/doctor" element={<DoctorDashboard />} />
+        <Route path="/start-call" element={<StartCall />} />
         <Route path="/auth/*" element={<AuthPage />} />
+        <Route path="*" element={<div>404 - Page Not Found</div>} />
       </Routes>
     </Layout>
   );
