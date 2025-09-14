@@ -14,7 +14,9 @@ import {
   Menu, 
   X,
   LogOut,
-  Heart
+  Heart,
+  Bell,
+  ClipboardList
 } from "lucide-react";
 import { useAuthStore } from "@/store/authstore";
 import { motion, AnimatePresence } from "framer-motion";
@@ -36,18 +38,34 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
     navigate("/");
   };
 
-  // Navigation items for patients
-  const navItems = [
-    { href: "/dashboard/patient", label: "Home", icon: Home },
-    { href: "/appointments", label: "Appointments", icon: Calendar },
-    { href: "/doctors", label: "Find Doctor", icon: Search },
-    { href: "/upload-report", label: "Analyze Report", icon: FileText },
-    { href: "/prescriptions", label: "Prescriptions", icon: Pill },
-    { href: "/pharmacy", label: "Pharmacy Near Me", icon: MapPin },
-    { href: "/upload-report", label: "Upload Report", icon: Upload },
-    { href: "/appointment-history", label: "Appointment History", icon: Clock },
-    { href: "/profile", label: "Profile", icon: User },
-  ];
+  // Navigation items based on user role
+  const getNavItems = () => {
+    if (user?.role === "DOCTOR") {
+      return [
+        { href: "/dashboard/doctor", label: "Home", icon: Home },
+        { href: "/pending-requests", label: "Pending Requests", icon: ClipboardList },
+        { href: "/appointments", label: "My Appointments", icon: Calendar },
+        { href: "/notifications", label: "Notifications", icon: Bell },
+        { href: "/profile", label: "Profile", icon: User },
+      ];
+    } else {
+      // Patient navigation items
+      return [
+        { href: "/dashboard/patient", label: "Home", icon: Home },
+        { href: "/appointments", label: "Appointments", icon: Calendar },
+        { href: "/doctors", label: "Find Doctor", icon: Search },
+        { href: "/upload-report", label: "Analyze Report", icon: FileText },
+        { href: "/prescriptions", label: "Prescriptions", icon: Pill },
+        { href: "/notifications", label: "Notifications", icon: Bell },
+        { href: "/pharmacy", label: "Pharmacy Near Me", icon: MapPin },
+        // { href: "/upload-report", label: "Upload Report", icon: Upload },
+        { href: "/appointment-history", label: "Appointment History", icon: Clock },
+        { href: "/profile", label: "Profile", icon: User },
+      ];
+    }
+  };
+
+  const navItems = getNavItems();
 
 
   return (
@@ -69,7 +87,7 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
       <aside className="hidden md:flex w-64 h-screen bg-gray-50 dark:bg-gray-800 flex-col shadow-lg fixed left-0 top-0 z-40">
         {/* Desktop Sidebar */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
-          <Link to="/dashboard/patient" className="flex items-center space-x-2">
+          <Link to={user?.role === "DOCTOR" ? "/dashboard/doctor" : "/dashboard/patient"} className="flex items-center space-x-2">
             <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
               <Heart className="h-5 w-5 text-white" />
             </div>
@@ -148,7 +166,7 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
       >
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
-          <Link to="/dashboard/patient" className="flex items-center space-x-2">
+          <Link to={user?.role === "DOCTOR" ? "/dashboard/doctor" : "/dashboard/patient"} className="flex items-center space-x-2">
             <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
               <Heart className="h-5 w-5 text-white" />
             </div>

@@ -16,8 +16,6 @@ import {
   MessageCircle,
   FileText,
   Plus,
-  Search,
-  Filter,
 } from "lucide-react";
 import { useAuthStore } from "@/store/authstore";
 import axios from "axios";
@@ -26,7 +24,7 @@ import { motion } from "framer-motion";
 
 type Appointment = {
   id: string;
-  status: 'PENDING' | 'CONFIRMED' | 'COMPLETED' | 'CANCELLED';
+  status: 'PENDING' | 'CONFIRMED' | 'COMPLETED' | 'CANCELLED' | 'REJECTED';
   appointmentType: 'ONLINE' | 'OFFLINE';
   date: string;
   time: string;
@@ -201,7 +199,8 @@ export default function AppointmentManagementPage() {
                           <Badge variant={
                             appointment.status === "PENDING" ? "outline" :
                             appointment.status === "CONFIRMED" ? "default" :
-                            appointment.status === "COMPLETED" ? "secondary" : "destructive"
+                            appointment.status === "COMPLETED" ? "secondary" :
+                            appointment.status === "REJECTED" ? "destructive" : "secondary"
                           }>
                             {appointment.status}
                           </Badge>
@@ -209,7 +208,7 @@ export default function AppointmentManagementPage() {
                       </div>
                     </div>
                     <div className="flex gap-2">
-                      {appointment.appointmentType === "ONLINE" && (
+                      {appointment.appointmentType === "ONLINE" && appointment.status === "CONFIRMED" && (
                         <Button size="sm" variant="outline">
                           <MessageCircle className="h-4 w-4 mr-1" />
                           Join Call
@@ -299,7 +298,8 @@ export default function AppointmentManagementPage() {
                           <Badge variant={
                             appointment.status === "PENDING" ? "outline" :
                             appointment.status === "CONFIRMED" ? "default" :
-                            appointment.status === "COMPLETED" ? "secondary" : "destructive"
+                            appointment.status === "COMPLETED" ? "secondary" :
+                            appointment.status === "REJECTED" ? "destructive" : "secondary"
                           }>
                             {appointment.status}
                           </Badge>

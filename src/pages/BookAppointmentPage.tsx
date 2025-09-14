@@ -135,7 +135,7 @@ export default function BookAppointmentPage() {
       );
 
       if (res.data.success) {
-        toast.success("Appointment booked successfully!");
+        toast.success("Appointment request sent successfully! You will be notified once the doctor responds.");
         navigate("/dashboard/patient");
       }
     } catch (err) {
@@ -276,7 +276,7 @@ export default function BookAppointmentPage() {
                 <CardHeader>
                   <CardTitle>Appointment Details</CardTitle>
                   <CardDescription>
-                    Fill in the details to book your appointment
+                    Fill in the details to send an appointment request to the doctor
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -367,7 +367,7 @@ export default function BookAppointmentPage() {
                         disabled={booking}
                         className="flex-1"
                       >
-                        {booking ? "Booking..." : "Book Appointment"}
+                        {booking ? "Sending Request..." : "Send Appointment Request"}
                       </Button>
                     </div>
                   </form>

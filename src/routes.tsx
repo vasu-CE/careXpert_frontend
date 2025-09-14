@@ -11,6 +11,8 @@ import BookAppointmentPage from "./pages/BookAppointmentPage";
 import ProfilePage from "./pages/ProfilePage";
 import AppointmentManagementPage from "./pages/AppointmentManagementPage";
 import PrescriptionsPage from "./pages/PrescriptionsPage";
+import NotificationsPage from "./pages/NotificationsPage";
+import DoctorPendingRequestsPage from "./pages/DoctorPendingRequestsPage";
 import AdminPage from "./pages/AdminPage";
 import ChatPage from "./pages/ChatPage";
 import AuthPage from "./pages/AuthPage";
@@ -38,6 +40,12 @@ export default function AppRoutes() {
       </Route>
       <Route path="/prescriptions" element={<DashboardLayout />}>
         <Route index element={<PrescriptionsPage />} />
+      </Route>
+      <Route path="/notifications" element={<DashboardLayout />}>
+        <Route index element={<NotificationsPage />} />
+      </Route>
+      <Route path="/pending-requests" element={<DashboardLayout />}>
+        <Route index element={<DoctorPendingRequestsPage />} />
       </Route>
       <Route path="/profile" element={<DashboardLayout />}>
         <Route index element={<ProfilePage />} />
