@@ -1,6 +1,6 @@
-import { useState } from "react";
-import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
+import { NavLink } from "react-router-dom";
 import { Button } from "./ui/button";
+import { Badge } from "./ui/badge";
 import { 
   Home, 
   Calendar, 
@@ -8,18 +8,16 @@ import {
   FileText, 
   Pill, 
   MapPin, 
-  Upload, 
   Clock, 
   User, 
-  Menu, 
   X,
-  LogOut,
-  Heart,
   Bell,
-  ClipboardList
+  MessageCircle
 } from "lucide-react";
 import { useAuthStore } from "@/store/authstore";
 import { motion, AnimatePresence } from "framer-motion";
+import { useEffect, useState } from "react";
+import axios from "axios";
 
 interface SidebarProps {
   isOpen: boolean;
@@ -28,24 +26,43 @@ interface SidebarProps {
 
 export function Sidebar({ isOpen, onToggle }: SidebarProps) {
   const user = useAuthStore((state) => state.user);
-  const logout = useAuthStore((state) => state.logout);
-  const navigate = useNavigate();
-  const location = useLocation();
+  const [unreadCount, setUnreadCount] = useState(0);
 
-  const handleLogout = async () => {
-    logout();
-    localStorage.removeItem('auth-storage');
-    navigate("/");
-  };
+  // Fetch unread notification count
+  useEffect(() => {
+    if (user) {
+      const fetchUnreadCount = async () => {
+        try {
+          const response = await axios.get(
+            `${import.meta.env.VITE_BASE_URL}/api/user/notifications/unread-count`,
+            { withCredentials: true }
+          );
+          if (response.data.success) {
+            setUnreadCount(response.data.data.unreadCount);
+          }
+        } catch (error) {
+          console.error("Error fetching unread count:", error);
+        }
+      };
+
+      fetchUnreadCount();
+      // Poll for updates every 30 seconds
+      const interval = setInterval(fetchUnreadCount, 30000);
+      return () => clearInterval(interval);
+    }
+  }, [user]);
 
   // Navigation items based on user role
   const getNavItems = () => {
-    if (user?.role === "DOCTOR") {
+    if (!user) {
+      return []; // No sidebar items for non-logged in users
+    }
+
+    if (user.role === "DOCTOR") {
       return [
         { href: "/dashboard/doctor", label: "Home", icon: Home },
-        { href: "/pending-requests", label: "Pending Requests", icon: ClipboardList },
         { href: "/appointments", label: "My Appointments", icon: Calendar },
-        { href: "/notifications", label: "Notifications", icon: Bell },
+        { href: "/notifications", label: "Notifications", icon: Bell, badge: unreadCount },
         { href: "/profile", label: "Profile", icon: User },
       ];
     } else {
@@ -54,11 +71,11 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
         { href: "/dashboard/patient", label: "Home", icon: Home },
         { href: "/appointments", label: "Appointments", icon: Calendar },
         { href: "/doctors", label: "Find Doctor", icon: Search },
+        { href: "/chat", label: "Chat", icon: MessageCircle },
         { href: "/upload-report", label: "Analyze Report", icon: FileText },
         { href: "/prescriptions", label: "Prescriptions", icon: Pill },
-        { href: "/notifications", label: "Notifications", icon: Bell },
+        { href: "/notifications", label: "Notifications", icon: Bell, badge: unreadCount },
         { href: "/pharmacy", label: "Pharmacy Near Me", icon: MapPin },
-        // { href: "/upload-report", label: "Upload Report", icon: Upload },
         { href: "/appointment-history", label: "Appointment History", icon: Clock },
         { href: "/profile", label: "Profile", icon: User },
       ];
@@ -67,6 +84,10 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
 
   const navItems = getNavItems();
 
+  // Don't render sidebar if user is not logged in
+  if (!user) {
+    return null;
+  }
 
   return (
     <>
@@ -84,19 +105,7 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
       </AnimatePresence>
 
       {/* Desktop Sidebar */}
-      <aside className="hidden md:flex w-64 h-screen bg-gray-50 dark:bg-gray-800 flex-col shadow-lg fixed left-0 top-0 z-40">
-        {/* Desktop Sidebar */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
-          <Link to={user?.role === "DOCTOR" ? "/dashboard/doctor" : "/dashboard/patient"} className="flex items-center space-x-2">
-            <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
-              <Heart className="h-5 w-5 text-white" />
-            </div>
-            <span className="text-xl font-bold text-gray-900 dark:text-white">
-              CareXpert
-            </span>
-          </Link>
-        </div>
-
+      <aside className="hidden md:flex w-64 h-screen bg-gray-50 dark:bg-gray-800 flex-col shadow-lg fixed left-0 top-16 z-40">
         {/* Navigation */}
         <nav className="flex-1 px-4 py-6 space-y-2">
           {navItems.map((item) => {
@@ -111,48 +120,27 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
                 <NavLink
                   to={item.href}
                   className={({ isActive }) =>
-                    `flex items-center space-x-3 px-4 py-3 rounded-lg transition-all duration-200 ${
+                    `flex items-center justify-between px-4 py-3 rounded-lg transition-all duration-200 ${
                       isActive 
                         ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300' 
                         : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
                     }`
                   }
                 >
-                  <Icon className="h-5 w-5" />
-                  <span className="font-medium">{item.label}</span>
+                  <div className="flex items-center space-x-3">
+                    <Icon className="h-5 w-5" />
+                    <span className="font-medium">{item.label}</span>
+                  </div>
+                  {item.badge && item.badge > 0 && (
+                    <Badge variant="destructive" className="h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs">
+                      {item.badge > 99 ? '99+' : item.badge}
+                    </Badge>
+                  )}
                 </NavLink>
               </motion.div>
             );
           })}
         </nav>
-
-        {/* User Info & Logout */}
-        <div className="p-4 border-t border-gray-200 dark:border-gray-700">
-          <div className="flex items-center space-x-3 mb-4">
-            <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center">
-              <span className="text-white text-sm font-medium">
-                {user?.name?.charAt(0) || "U"}
-              </span>
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
-                {user?.name || "User"}
-              </p>
-              <p className="text-xs text-gray-500 dark:text-gray-400">
-                {user?.role || "Patient"}
-              </p>
-            </div>
-          </div>
-          
-          <Button
-            variant="ghost"
-            onClick={handleLogout}
-            className="w-full justify-start text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
-          >
-            <LogOut className="h-4 w-4 mr-2" />
-            Logout
-          </Button>
-        </div>
       </aside>
 
       {/* Mobile Sidebar */}
@@ -162,25 +150,14 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
           x: isOpen ? 0 : "-100%",
           transition: { type: "spring", damping: 25, stiffness: 200 }
         }}
-        className="md:hidden fixed top-0 left-0 h-full w-64 bg-gray-50 dark:bg-gray-800 z-50 flex flex-col shadow-lg"
+        className="md:hidden fixed top-16 left-0 h-full w-64 bg-gray-50 dark:bg-gray-800 z-50 flex flex-col shadow-lg"
       >
-        {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
-          <Link to={user?.role === "DOCTOR" ? "/dashboard/doctor" : "/dashboard/patient"} className="flex items-center space-x-2">
-            <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
-              <Heart className="h-5 w-5 text-white" />
-            </div>
-            <span className="text-xl font-bold text-gray-900 dark:text-white">
-              CareXpert
-            </span>
-          </Link>
-          
-          {/* Mobile close button */}
+        {/* Mobile close button */}
+        <div className="flex items-center justify-end p-4 border-b border-gray-200 dark:border-gray-700">
           <Button
             variant="ghost"
             size="sm"
             onClick={onToggle}
-            className="md:hidden"
           >
             <X className="h-5 w-5" />
           </Button>
@@ -200,7 +177,7 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
                 <NavLink
                   to={item.href}
                   className={({ isActive }) =>
-                    `flex items-center space-x-3 px-4 py-3 rounded-lg transition-all duration-200 ${
+                    `flex items-center justify-between px-4 py-3 rounded-lg transition-all duration-200 ${
                       isActive 
                         ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300' 
                         : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
@@ -213,41 +190,20 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
                     }
                   }}
                 >
-                  <Icon className="h-5 w-5" />
-                  <span className="font-medium">{item.label}</span>
+                  <div className="flex items-center space-x-3">
+                    <Icon className="h-5 w-5" />
+                    <span className="font-medium">{item.label}</span>
+                  </div>
+                  {item.badge && item.badge > 0 && (
+                    <Badge variant="destructive" className="h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs">
+                      {item.badge > 99 ? '99+' : item.badge}
+                    </Badge>
+                  )}
                 </NavLink>
               </motion.div>
             );
           })}
         </nav>
-
-        {/* User Info & Logout */}
-        <div className="p-4 border-t border-gray-200 dark:border-gray-700">
-          <div className="flex items-center space-x-3 mb-4">
-            <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center">
-              <span className="text-white text-sm font-medium">
-                {user?.name?.charAt(0) || "U"}
-              </span>
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
-                {user?.name || "User"}
-              </p>
-              <p className="text-xs text-gray-500 dark:text-gray-400">
-                {user?.role || "Patient"}
-              </p>
-            </div>
-          </div>
-          
-          <Button
-            variant="ghost"
-            onClick={handleLogout}
-            className="w-full justify-start text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
-          >
-            <LogOut className="h-4 w-4 mr-2" />
-            Logout
-          </Button>
-        </div>
       </motion.aside>
     </>
   );

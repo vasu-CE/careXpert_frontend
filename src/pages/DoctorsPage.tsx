@@ -21,7 +21,7 @@ import {
   DialogFooter,
 } from "../components/ui/dialog";
 import { Search, MapPin, Clock, Filter, Heart, Video, User } from "lucide-react";
-import { Navbar } from "../components/navbar";
+import { Navbar } from "../components/Navbar";
 import { Footer } from "../components/footer";
 import { toast } from "sonner";
 import axios from "axios";
@@ -208,8 +208,7 @@ export default function DoctorsPage() {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <Navbar />
-
-      <div className="container mx-auto px-4 pt-20 pb-12 mt-12">
+      <div className="container mx-auto px-4 pt-10 pb-12">
         {/* Header */}
         <div className="text-center mb-12">
           <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-4">

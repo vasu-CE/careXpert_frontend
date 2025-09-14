@@ -19,6 +19,9 @@ import AuthPage from "./pages/AuthPage";
 import PatientDashboard from "./pages/PatientDashboard";
 import DoctorDashboard from "./pages/DoctorDashboard";
 import StartCall from "./pages/StartCall";
+import UploadReportPage from "./pages/UploadReportPage";
+import AppointmentHistoryPage from "./pages/AppointmentHistoryPage";
+import PharmacyPage from "./pages/PharmacyPage";
 
 export default function AppRoutes() {
   return (
@@ -62,6 +65,18 @@ export default function AppRoutes() {
       <Route path="/chat" element={<DashboardLayout />}>
         <Route index element={<ChatPage />} />
       </Route>
+      <Route path="/upload-report" element={<DashboardLayout />}>
+        <Route index element={<UploadReportPage />} />
+      </Route>
+      <Route path="/appointment-history" element={<DashboardLayout />}>
+        <Route index element={<AppointmentHistoryPage />} />
+      </Route>
+        <Route path="/pharmacy" element={<DashboardLayout />}>
+          <Route index element={<PharmacyPage />} />
+        </Route>
+        <Route path="/notifications" element={<DashboardLayout />}>
+          <Route index element={<NotificationsPage />} />
+        </Route>
       <Route path="/admin" element={<DashboardLayout />}>
         <Route index element={<AdminPage />} />
       </Route>

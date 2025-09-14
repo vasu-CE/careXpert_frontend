@@ -74,14 +74,26 @@ export default function AppointmentManagementPage() {
           const allAppointments = res.data.data;
           const now = new Date();
           
+          
+          function parseAppointmentDateTime(dateStr: string, timeStr: string) {
+            // If dateStr already contains 'T', assume it's ISO and just return new Date(dateStr)
+            if (dateStr.includes('T')) {
+              return new Date(dateStr);
+            }
+            // Otherwise, combine date and time as local time
+            // e.g. "2025-09-14" + "12:30" => "2025-09-14T12:30"
+            // This will be interpreted as local time by JS Date
+            return new Date(`${dateStr}T${timeStr}`);
+          }
+
           // Separate upcoming and past appointments
           const upcoming = allAppointments.filter(apt => {
-            const appointmentDateTime = new Date(`${apt.date}T${apt.time}`);
+            const appointmentDateTime = parseAppointmentDateTime(apt.date, apt.time);
             return appointmentDateTime >= now;
           });
-          
+
           const past = allAppointments.filter(apt => {
-            const appointmentDateTime = new Date(`${apt.date}T${apt.time}`);
+            const appointmentDateTime = parseAppointmentDateTime(apt.date, apt.time);
             return appointmentDateTime < now;
           });
           
@@ -101,6 +113,10 @@ export default function AppointmentManagementPage() {
 
     fetchAppointments();
   }, [url]);
+
+  useEffect(() => {
+    console.log(upcomingAppointments);
+  }, [upcomingAppointments]);
 
   if (isLoading) {
     return (
@@ -132,7 +148,7 @@ export default function AppointmentManagementPage() {
           </div>
           <Button 
             onClick={() => navigate("/doctors")}
-            className="bg-blue-600 hover:bg-blue-700"
+            className="bg-blue-600 hover:bg-blue-700 dark:text-white "
           >
             <Plus className="h-4 w-4 mr-2" />
             Book New Appointment

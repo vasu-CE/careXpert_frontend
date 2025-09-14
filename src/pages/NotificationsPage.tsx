@@ -1,29 +1,12 @@
-import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import { Button } from "../components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "../components/ui/card";
+import { useEffect, useState } from "react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card";
 import { Badge } from "../components/ui/badge";
-import {
-  Bell,
-  CheckCircle,
-  XCircle,
-  Calendar,
-  Clock,
-  MessageSquare,
-  CheckCheck,
-} from "lucide-react";
-import { useAuthStore } from "@/store/authstore";
+import { Button } from "../components/ui/button";
+import { Bell, Check, CheckCheck, Calendar, User, Stethoscope } from "lucide-react";
 import axios from "axios";
 import { toast } from "sonner";
-import { motion } from "framer-motion";
 
-type Notification = {
+interface Notification {
   id: string;
   type: string;
   title: string;
@@ -31,32 +14,12 @@ type Notification = {
   isRead: boolean;
   appointmentId?: string;
   createdAt: string;
-  appointment?: {
-    id: string;
-    date: string;
-    time: string;
-    status: string;
-    doctor: {
-      user: {
-        name: string;
-      };
-    };
-  };
-};
+}
 
 export default function NotificationsPage() {
-  const navigate = useNavigate();
-  const user = useAuthStore((state) => state.user);
   const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [unreadCount, setUnreadCount] = useState(0);
-  const url = `${import.meta.env.VITE_BASE_URL}/api/patient`;
-
-  useEffect(() => {
-    if (!user || user.role !== "PATIENT") {
-      navigate("/auth/login");
-    }
-  }, [user, navigate]);
+  const [loading, setLoading] = useState(true);
+  const [markingAsRead, setMarkingAsRead] = useState<string | null>(null);
 
   useEffect(() => {
     fetchNotifications();
@@ -64,255 +27,207 @@ export default function NotificationsPage() {
 
   const fetchNotifications = async () => {
     try {
-      setIsLoading(true);
-      const res = await axios.get(`${url}/notifications`, { withCredentials: true });
-      if (res.data.success) {
-        setNotifications(res.data.data);
-        setUnreadCount(res.data.data.filter((n: Notification) => !n.isRead).length);
+      const response = await axios.get(
+        `${import.meta.env.VITE_BASE_URL}/api/user/notifications`,
+        { withCredentials: true }
+      );
+      
+      if (response.data.success) {
+        setNotifications(response.data.data.notifications);
       }
-    } catch (err) {
-      if (axios.isAxiosError(err) && err.response) {
-        toast.error(err.response.data?.message || "Failed to fetch notifications");
-      } else {
-        toast.error("Unknown error occurred");
-      }
+    } catch (error) {
+      console.error("Error fetching notifications:", error);
+      toast.error("Failed to fetch notifications");
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
 
   const markAsRead = async (notificationId: string) => {
+    setMarkingAsRead(notificationId);
     try {
-      await axios.patch(
-        `${url}/notifications/${notificationId}/read`,
+      await axios.put(
+        `${import.meta.env.VITE_BASE_URL}/api/user/notifications/${notificationId}/read`,
         {},
         { withCredentials: true }
       );
       
-      // Update local state
       setNotifications(prev => 
-        prev.map(notification => 
-          notification.id === notificationId 
-            ? { ...notification, isRead: true }
-            : notification
+        prev.map(notif => 
+          notif.id === notificationId 
+            ? { ...notif, isRead: true }
+            : notif
         )
       );
-      setUnreadCount(prev => Math.max(0, prev - 1));
-    } catch (err) {
-      if (axios.isAxiosError(err) && err.response) {
-        toast.error(err.response.data?.message || "Failed to mark notification as read");
-      } else {
-        toast.error("Unknown error occurred");
-      }
+      toast.success("Notification marked as read");
+    } catch (error) {
+      console.error("Error marking notification as read:", error);
+      toast.error("Failed to mark notification as read");
+    } finally {
+      setMarkingAsRead(null);
     }
   };
 
   const markAllAsRead = async () => {
     try {
-      await axios.patch(
-        `${url}/notifications/mark-all-read`,
+      await axios.put(
+        `${import.meta.env.VITE_BASE_URL}/api/user/notifications/mark-all-read`,
         {},
         { withCredentials: true }
       );
       
-      // Update local state
       setNotifications(prev => 
-        prev.map(notification => ({ ...notification, isRead: true }))
+        prev.map(notif => ({ ...notif, isRead: true }))
       );
-      setUnreadCount(0);
       toast.success("All notifications marked as read");
-    } catch (err) {
-      if (axios.isAxiosError(err) && err.response) {
-        toast.error(err.response.data?.message || "Failed to mark all notifications as read");
-      } else {
-        toast.error("Unknown error occurred");
-      }
+    } catch (error) {
+      console.error("Error marking all notifications as read:", error);
+      toast.error("Failed to mark all notifications as read");
     }
   };
 
   const getNotificationIcon = (type: string) => {
     switch (type) {
       case "APPOINTMENT_ACCEPTED":
-        return <CheckCircle className="h-5 w-5 text-green-600" />;
       case "APPOINTMENT_REJECTED":
-        return <XCircle className="h-5 w-5 text-red-600" />;
       case "APPOINTMENT_REMINDER":
-        return <Calendar className="h-5 w-5 text-blue-600" />;
+        return <Calendar className="h-5 w-5" />;
+      case "DOCTOR_MESSAGE":
+        return <Stethoscope className="h-5 w-5" />;
       default:
-        return <Bell className="h-5 w-5 text-gray-600" />;
+        return <Bell className="h-5 w-5" />;
     }
   };
 
-  const getNotificationBadgeVariant = (type: string) => {
+  const getNotificationColor = (type: string) => {
     switch (type) {
       case "APPOINTMENT_ACCEPTED":
-        return "default" as const;
+        return "text-green-600 bg-green-100 dark:bg-green-900/30";
       case "APPOINTMENT_REJECTED":
-        return "destructive" as const;
+        return "text-red-600 bg-red-100 dark:bg-red-900/30";
       case "APPOINTMENT_REMINDER":
-        return "secondary" as const;
+        return "text-blue-600 bg-blue-100 dark:bg-blue-900/30";
+      case "DOCTOR_MESSAGE":
+        return "text-purple-600 bg-purple-100 dark:bg-purple-900/30";
       default:
-        return "outline" as const;
+        return "text-gray-600 bg-gray-100 dark:bg-gray-900/30";
     }
   };
 
-  if (isLoading) {
+  const unreadCount = notifications.filter(n => !n.isRead).length;
+
+  if (loading) {
     return (
-      <div className="p-6 md:p-8">
-        <div className="flex items-center justify-center min-h-[400px]">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-600"></div>
+      <div className="p-6">
+        <div className="flex items-center justify-center h-64">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="p-6 md:p-8">
-      {/* Header */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className="mb-8"
-      >
+    <div className="p-6">
+      <div className="mb-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-2">
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
               Notifications
             </h1>
-            <p className="text-gray-600 dark:text-gray-300 text-lg">
-              Stay updated with your appointment status and important messages
+            <p className="text-gray-600 dark:text-gray-400 mt-2">
+              Stay updated with your health appointments and messages
             </p>
           </div>
-          <div className="flex items-center gap-3">
-            {unreadCount > 0 && (
-              <Badge variant="destructive" className="text-sm">
-                {unreadCount} Unread
-              </Badge>
-            )}
-            {unreadCount > 0 && (
-              <Button
-                onClick={markAllAsRead}
-                variant="outline"
-                size="sm"
-                className="flex items-center gap-2"
-              >
-                <CheckCheck className="h-4 w-4" />
-                Mark All Read
-              </Button>
-            )}
-          </div>
+          {unreadCount > 0 && (
+            <Button onClick={markAllAsRead} variant="outline" className="flex items-center gap-2">
+              <CheckCheck className="h-4 w-4" />
+              Mark All as Read
+            </Button>
+          )}
         </div>
-      </motion.div>
+      </div>
 
-      {/* Notifications List */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.1 }}
-      >
-        {notifications.length > 0 ? (
-          <div className="space-y-4">
-            {notifications.map((notification, index) => (
-              <motion.div
-                key={notification.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3, delay: index * 0.05 }}
-              >
-                <Card 
-                  className={`hover:shadow-lg transition-shadow cursor-pointer ${
-                    !notification.isRead ? 'border-l-4 border-l-blue-500 bg-blue-50/50 dark:bg-blue-900/10' : ''
-                  }`}
-                  onClick={() => !notification.isRead && markAsRead(notification.id)}
-                >
-                  <CardContent className="p-6">
-                    <div className="flex items-start gap-4">
-                      <div className="flex-shrink-0 mt-1">
-                        {getNotificationIcon(notification.type)}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between mb-2">
-                          <div className="flex items-center gap-2">
-                            <h3 className="font-semibold text-gray-900 dark:text-white">
-                              {notification.title}
-                            </h3>
-                            <Badge variant={getNotificationBadgeVariant(notification.type)} className="text-xs">
-                              {notification.type.replace(/_/g, ' ')}
-                            </Badge>
-                            {!notification.isRead && (
-                              <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
-                            )}
-                          </div>
-                          <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
-                            <Clock className="h-3 w-3" />
-                            {new Date(notification.createdAt).toLocaleDateString("en-US", {
-                              month: 'short',
-                              day: 'numeric',
-                              hour: '2-digit',
-                              minute: '2-digit'
-                            })}
-                          </div>
-                        </div>
-                        <p className="text-gray-600 dark:text-gray-300 text-sm leading-relaxed">
-                          {notification.message}
-                        </p>
-                        
-                        {/* Appointment Details */}
-                        {notification.appointment && (
-                          <div className="mt-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                            <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
-                              <Calendar className="h-4 w-4" />
-                              <span>
-                                Appointment with Dr. {notification.appointment.doctor.user.name}
-                              </span>
-                            </div>
-                            <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300 mt-1">
-                              <Clock className="h-4 w-4" />
-                              <span>
-                                {new Date(notification.appointment.date).toLocaleDateString()} at {notification.appointment.time}
-                              </span>
-                            </div>
-                            <div className="mt-2">
-                              <Badge 
-                                variant={
-                                  notification.appointment.status === "CONFIRMED" ? "default" :
-                                  notification.appointment.status === "REJECTED" ? "destructive" :
-                                  "secondary"
-                                }
-                                className="text-xs"
-                              >
-                                {notification.appointment.status}
-                              </Badge>
-                            </div>
-                          </div>
+      <div className="space-y-4">
+        {notifications.length === 0 ? (
+          <Card>
+            <CardContent className="flex flex-col items-center justify-center py-12">
+              <Bell className="h-12 w-12 text-gray-400 mb-4" />
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+                No notifications yet
+              </h3>
+              <p className="text-gray-600 dark:text-gray-400 text-center">
+                You'll receive notifications about appointments, messages, and important updates here.
+              </p>
+            </CardContent>
+          </Card>
+        ) : (
+          notifications.map((notification) => (
+            <Card 
+              key={notification.id} 
+              className={`transition-all duration-200 ${
+                !notification.isRead 
+                  ? 'border-l-4 border-l-blue-500 bg-blue-50/50 dark:bg-blue-900/10' 
+                  : 'opacity-75'
+              }`}
+            >
+              <CardContent className="p-6">
+                <div className="flex items-start justify-between">
+                  <div className="flex items-start space-x-4 flex-1">
+                    <div className={`p-2 rounded-full ${getNotificationColor(notification.type)}`}>
+                      {getNotificationIcon(notification.type)}
+                    </div>
+                    
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                          {notification.title}
+                        </h3>
+                        {!notification.isRead && (
+                          <Badge variant="destructive" className="text-xs">
+                            New
+                          </Badge>
                         )}
                       </div>
+                      
+                      <p className="text-gray-600 dark:text-gray-400 mb-2">
+                        {notification.message}
+                      </p>
+                      
+                      <div className="flex items-center gap-4 text-sm text-gray-500 dark:text-gray-400">
+                        <span>
+                          {new Date(notification.createdAt).toLocaleDateString()}
+                        </span>
+                        <span>
+                          {new Date(notification.createdAt).toLocaleTimeString([], {
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          })}
+                        </span>
+                      </div>
                     </div>
-                  </CardContent>
-                </Card>
-              </motion.div>
-            ))}
-          </div>
-        ) : (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.1 }}
-            className="text-center py-12"
-          >
-            <div className="w-24 h-24 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-6">
-              <Bell className="h-12 w-12 text-gray-400" />
-            </div>
-            <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
-              No Notifications
-            </h3>
-            <p className="text-gray-600 dark:text-gray-300 max-w-md mx-auto">
-              You don't have any notifications yet. You'll receive updates about your appointments here.
-            </p>
-          </motion.div>
+                  </div>
+                  
+                  {!notification.isRead && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => markAsRead(notification.id)}
+                      disabled={markingAsRead === notification.id}
+                      className="ml-4"
+                    >
+                      {markingAsRead === notification.id ? (
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                      ) : (
+                        <Check className="h-4 w-4" />
+                      )}
+                    </Button>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          ))
         )}
-      </motion.div>
+      </div>
     </div>
   );
 }

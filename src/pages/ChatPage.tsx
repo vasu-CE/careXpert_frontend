@@ -17,7 +17,7 @@ import {
 } from "../components/ui/tabs";
 import { Avatar, AvatarFallback, AvatarImage } from "../components/ui/avatar";
 import { ScrollArea } from "../components/ui/scroll-area";
-import { MessageCircle, Bot, Users, Send, MapPin, Plus } from "lucide-react";
+import { MessageCircle, Bot, Users, Send, MapPin, Plus, Menu, X, User, Stethoscope } from "lucide-react";
 import axios from "axios";
 import { toast } from "sonner";
 import {
@@ -81,6 +81,10 @@ export default function ChatPage() {
   const [selectedChat, setSelectedChat] = useState<SelectedChat>("ai");
   const [messages, setMessages] = useState<FormattedMessage[]>([]);
   const [cityRoom, setCityRoom] = useState<CityRoomData[]>([]);
+  const [showSidebar, setShowSidebar] = useState(false);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
+  const [communityMembers, setCommunityMembers] = useState<any[]>([]);
+  const [showMembers, setShowMembers] = useState(false);
 
   // DM conversation state for doctors
   const [dmConversations, setDmConversations] = useState<any[]>([]);
@@ -200,8 +204,20 @@ export default function ChatPage() {
 
   // Auto-scroll to bottom of messages
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "auto" });
-  }, [messages, aiMessages, selectedChat]); // Scroll when messages, aiMessages, or selectedChat changes
+    // Skip scroll on initial load
+    if (isInitialLoad) {
+      setIsInitialLoad(false);
+      return;
+    }
+    
+    // Only scroll if there are messages to scroll to
+    if ((messages.length > 0 || aiMessages.length > 0) && messagesEndRef.current) {
+      // Small delay to ensure DOM is updated
+      setTimeout(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+      }, 100);
+    }
+  }, [messages, aiMessages, isInitialLoad]); // Added isInitialLoad to dependencies
 
   // Load AI chat history when AI tab is selected
   useEffect(() => {
@@ -408,6 +424,21 @@ export default function ChatPage() {
     }
   };
 
+  // Function to fetch community members
+  const fetchCommunityMembers = async (roomId: string) => {
+    try {
+      const response = await axios.get(
+        `${import.meta.env.VITE_BASE_URL}/api/user/communities/${roomId}/members`,
+        { withCredentials: true }
+      );
+      if (response.data.success) {
+        setCommunityMembers(response.data.data.members);
+      }
+    } catch (error) {
+      console.error("Error fetching community members:", error);
+    }
+  };
+
   // Load chat history and join room when selected chat changes
   useEffect(() => {
     const loadChatHistory = async () => {
@@ -481,6 +512,9 @@ export default function ChatPage() {
             );
             setMessages(formattedMessages);
           }
+          
+          // Fetch community members
+          await fetchCommunityMembers(selectedChat.id);
         } catch (error) {
           console.error("Error loading city chat history:", error);
           setMessages([]);
@@ -569,12 +603,44 @@ export default function ChatPage() {
   }, [selectedChat, user]);
 
   return (
-    <div className="h-screen lg:overflow-y-hidden flex flex-col">
-      <div className="flex-1 flex flex-col">
-        <div className="grid lg:grid-cols-4 gap-6 flex-1 overflow-hidden">
-          {/* Chat Sidebar */}
-          <div className="lg:col-span-1 flex flex-col">
-            <Tabs defaultValue="ai" className="space-y-4 flex flex-col flex-1">
+    <div className="h-[calc(100vh-5rem)] flex flex-col mt-2">
+      {/* Mobile Header */}
+      <div className="lg:hidden p-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
+        <div className="flex items-center justify-between">
+          <h1 className="text-xl font-bold text-gray-900 dark:text-white">Chat</h1>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowSidebar(!showSidebar)}
+          >
+            {showSidebar ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
+          </Button>
+        </div>
+      </div>
+      
+      <div className="flex-1 flex overflow-hidden">
+        {/* Mobile Overlay */}
+        {showSidebar && (
+          <div 
+            className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+            onClick={() => setShowSidebar(false)}
+          />
+        )}
+        
+        {/* Chat Sidebar */}
+        <div className={`${showSidebar ? 'block' : 'hidden'} lg:block w-80 flex-shrink-0 lg:mr-6 lg:relative fixed lg:top-0 top-0 left-0 h-full z-50 lg:z-auto bg-white dark:bg-gray-900 lg:bg-transparent`}>
+          {/* Mobile close button */}
+          <div className="lg:hidden flex justify-end p-4 border-b border-gray-200 dark:border-gray-700">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowSidebar(false)}
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+          
+          <Tabs defaultValue="ai" className="space-y-4 flex flex-col h-full">
               <TabsList
                 className={`grid w-full ${
                   user?.role === "DOCTOR" ? "grid-cols-4" : "grid-cols-3"
@@ -612,7 +678,10 @@ export default function ChatPage() {
                           ? "bg-purple-100 dark:bg-purple-900/30 border border-purple-200 dark:border-purple-700"
                           : "hover:bg-gray-100 dark:hover:bg-gray-800"
                       }`}
-                      onClick={() => setSelectedChat("ai")}
+                      onClick={() => {
+                        setSelectedChat("ai");
+                        setShowSidebar(false);
+                      }}
                     >
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 bg-purple-600 rounded-full flex items-center justify-center">
@@ -653,9 +722,10 @@ export default function ChatPage() {
                               ? "bg-blue-100 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700"
                               : "hover:bg-gray-100 dark:hover:bg-gray-800"
                           }`}
-                          onClick={() =>
-                            setSelectedChat({ type: "doctor", data: chat })
-                          }
+                          onClick={() => {
+                            setSelectedChat({ type: "doctor", data: chat });
+                            setShowSidebar(false);
+                          }}
                         >
                           <div className="flex items-center gap-3">
                             <div className="relative">
@@ -720,9 +790,10 @@ export default function ChatPage() {
                                   ? "bg-green-50 dark:bg-green-900/20 border-l-4 border-l-green-500"
                                   : ""
                               }`}
-                              onClick={() =>
-                                handleConversationSelect(conversation)
-                              }
+                              onClick={() => {
+                                handleConversationSelect(conversation);
+                                setShowSidebar(false);
+                              }}
                             >
                               <div className="flex items-center gap-3">
                                 <Avatar className="h-10 w-10">
@@ -805,9 +876,10 @@ export default function ChatPage() {
                               ? "bg-green-100 dark:bg-green-900/30 border border-green-200 dark:border-green-700"
                               : "hover:bg-gray-100 dark:hover:bg-gray-800"
                           }`}
-                          onClick={() =>
-                            setSelectedChat({ type: "room", ...room })
-                          }
+                          onClick={() => {
+                            setSelectedChat({ type: "room", ...room });
+                            setShowSidebar(false);
+                          }}
                         >
                           <div className="space-y-2">
                             <h4 className="font-semibold text-gray-900 dark:text-white text-sm">
@@ -834,11 +906,11 @@ export default function ChatPage() {
             </Tabs>
           </div>
 
-          {/* Chat Area */}
-          <div className="lg:col-span-3 flex flex-col">
-            <Card className="h-[80vh] flex flex-col">
-              {/* Chat Header */}
-              <CardHeader className="border-b">
+        {/* Chat Area */}
+        <div className="flex-1 flex flex-col min-w-0">
+          <Card className="h-full flex flex-col">
+            {/* Chat Header */}
+            <CardHeader className="border-b">
                 {selectedChat === "ai" && (
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
@@ -898,26 +970,37 @@ export default function ChatPage() {
                   )}
                 {typeof selectedChat === "object" &&
                   selectedChat.type === "room" && (
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-green-600 rounded-full flex items-center justify-center">
-                        <Users className="h-5 w-5 text-white" />
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-green-600 rounded-full flex items-center justify-center">
+                          <Users className="h-5 w-5 text-white" />
+                        </div>
+                        <div>
+                          <CardTitle className="text-lg">
+                            {selectedChat.name}
+                          </CardTitle>
+                          <CardDescription>
+                            {selectedChat.members.length} members •{" "}
+                            {selectedChat.name}
+                          </CardDescription>
+                        </div>
                       </div>
-                      <div>
-                        <CardTitle className="text-lg">
-                          {selectedChat.name}
-                        </CardTitle>
-                        <CardDescription>
-                          {selectedChat.members.length} members •{" "}
-                          {selectedChat.name}
-                        </CardDescription>
-                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setShowMembers(!showMembers)}
+                        className="flex items-center gap-2"
+                      >
+                        <Users className="h-4 w-4" />
+                        {showMembers ? "Hide Members" : "Show Members"}
+                      </Button>
                     </div>
                   )}
               </CardHeader>
 
-              {/* Messages Area */}
-              <CardContent className="flex-1 p-4 overflow-y-auto ">
-                <ScrollArea className="h-full ">
+            {/* Messages Area */}
+            <CardContent className="flex-1 p-4 overflow-y-auto">
+              <ScrollArea className="h-full">
                   {selectedChat === "ai" && (
                     <>
                       {aiMessages.map((msg) => (
@@ -1077,8 +1160,67 @@ export default function ChatPage() {
                 </ScrollArea>
               </CardContent>
 
-              {/* Message Input */}
-              <div className="border-t p-4">
+              {/* Community Members Section */}
+              {typeof selectedChat === "object" &&
+                selectedChat.type === "room" &&
+                showMembers && (
+                <div className="border-t p-4 bg-gray-50 dark:bg-gray-800">
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+                    Community Members ({communityMembers.length})
+                  </h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 max-h-48 overflow-y-auto">
+                    {communityMembers.map((member) => (
+                      <div
+                        key={member.id}
+                        className="flex items-center space-x-3 p-3 bg-white dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600"
+                      >
+                        <Avatar className="h-8 w-8">
+                          <AvatarImage src={member.profilePicture} />
+                          <AvatarFallback className="bg-blue-600 text-white text-sm">
+                            {member.name?.charAt(0) || "U"}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                            {member.name}
+                          </p>
+                          <div className="flex items-center gap-2">
+                            <Badge
+                              variant={member.role === "DOCTOR" ? "default" : "secondary"}
+                              className="text-xs"
+                            >
+                              {member.role === "DOCTOR" ? (
+                                <>
+                                  <Stethoscope className="h-3 w-3 mr-1" />
+                                  Doctor
+                                </>
+                              ) : (
+                                <>
+                                  <User className="h-3 w-3 mr-1" />
+                                  Patient
+                                </>
+                              )}
+                            </Badge>
+                            {member.specialty && (
+                              <span className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                                {member.specialty}
+                              </span>
+                            )}
+                          </div>
+                          {member.location && (
+                            <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                              📍 {member.location}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+            {/* Message Input */}
+            <div className="border-t p-4">
                 <div className="flex gap-2">
                   <Input
                     placeholder="Type your message..."
@@ -1094,10 +1236,9 @@ export default function ChatPage() {
                   <Button onClick={handleSendMessage} className="px-6">
                     <Send className="h-4 w-4" />
                   </Button>
-                </div>
               </div>
-            </Card>
-          </div>
+            </div>
+          </Card>
         </div>
       </div>
     </div>
