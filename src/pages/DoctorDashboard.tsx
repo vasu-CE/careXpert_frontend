@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Navbar } from "../components/navbar";
 import {
   Card,
   CardContent,
@@ -134,9 +133,7 @@ export default function DoctorDashboard() {
   // TODO: Implement patient chats and available slots functionality
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      <Navbar />
-      <div className="container mx-auto px-4 py-8 mt-12">
+    <div className="p-6 md:p-8">
         <h1 className="text-3xl font-bold mb-6 text-gray-900 dark:text-white">
           Welcome back, {user?.name || "Doctor"}!
         </h1>
@@ -409,7 +406,6 @@ export default function DoctorDashboard() {
             </Card>
           </TabsContent>
         </Tabs>
-      </div>
     </div>
   );
 }

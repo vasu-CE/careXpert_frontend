@@ -18,7 +18,6 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "../components/ui/avatar";
 import { ScrollArea } from "../components/ui/scroll-area";
 import { MessageCircle, Bot, Users, Send, MapPin, Plus } from "lucide-react";
-import { Navbar } from "../components/navbar";
 import axios from "axios";
 import { toast } from "sonner";
 import {
@@ -570,10 +569,8 @@ export default function ChatPage() {
   }, [selectedChat, user]);
 
   return (
-    <div className="h-screen lg:overflow-y-hidden bg-gray-50 dark:bg-gray-900 flex flex-col">
-      <Navbar />
-
-      <div className="container mx-auto px-4 pt-10 pb-12 flex-1 flex flex-col mt-12">
+    <div className="h-screen lg:overflow-y-hidden flex flex-col">
+      <div className="flex-1 flex flex-col">
         <div className="grid lg:grid-cols-4 gap-6 flex-1 overflow-hidden">
           {/* Chat Sidebar */}
           <div className="lg:col-span-1 flex flex-col">
