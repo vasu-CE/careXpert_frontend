@@ -11,7 +11,6 @@ import ProfilePage from "./pages/ProfilePage";
 import AppointmentManagementPage from "./pages/AppointmentManagementPage";
 import AdminPage from "./pages/AdminPage";
 import ChatPage from "./pages/ChatPage";
-import DashboardPage from "./pages/DashboardPage";
 import AuthPage from "./pages/AuthPage";
 import PatientDashboard from "./pages/PatientDashboard";
 import DoctorDashboard from "./pages/DoctorDashboard";

@@ -31,13 +31,13 @@ import {
   Activity,
 } from "lucide-react";
 import { Navbar } from "../components/navbar";
-import { useAuth } from "../components/auth-context";
+import { useAuth } from "../context/auth-context";
 
 export default function AdminPage() {
   const navigate = useNavigate();
   const { user, isLoading } = useAuth();
-  const [searchQuery, setSearchQuery] = useState("");
-  const [filterStatus, setFilterStatus] = useState("all");
+  const [_searchQuery, _setSearchQuery] = useState("");
+  const [_filterStatus, _setFilterStatus] = useState("all");
 
   useEffect(() => {
     if (!isLoading && (!user || user.role !== "admin")) {

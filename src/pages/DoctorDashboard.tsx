@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { Navbar } from "../components/navbar";
 import {
   Card,
@@ -23,33 +23,40 @@ import {
   FileText,
   Clock,
   Settings,
-  Search,
-  Send,
+  Search as _Search,
+  Send as _Send,
 } from "lucide-react";
 import { Button } from "../components/ui/button";
-import { Input } from "../components/ui/input";
-import { Label } from "../components/ui/label";
+import { Input as _Input } from "../components/ui/input";
+import { Label as _Label } from "../components/ui/label";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+  Select as _Select,
+  SelectContent as _SelectContent,
+  SelectItem as _SelectItem,
+  SelectTrigger as _SelectTrigger,
+  SelectValue as _SelectValue,
 } from "../components/ui/select";
-import { ScrollArea } from "../components/ui/scroll-area";
+import { ScrollArea as _ScrollArea } from "../components/ui/scroll-area";
 import axios from "axios";
 import { toast } from "sonner";
 import { useAuthStore } from "@/store/authstore";
 
 type Appointment = {
   id: string;
-  status: string;
-  patientName: string;
-  notes: string;
-  profilePicture: string;
-  appointmentTime: {
-    startTime: string;
-    endTime: string;
+  status: 'PENDING' | 'CONFIRMED' | 'COMPLETED' | 'CANCELLED';
+  appointmentType: 'ONLINE' | 'OFFLINE';
+  date: string;
+  time: string;
+  notes?: string;
+  consultationFee?: number;
+  createdAt: string;
+  updatedAt: string;
+  patient: {
+    id: string;
+    name: string;
+    profilePicture?: string;
+    email: string;
+    medicalHistory?: string;
   };
 };
 
@@ -66,8 +73,8 @@ export default function DoctorDashboard() {
   const user = useAuthStore((state) => state.user);
   // const user = { name: "Dr. John Smith", role: "doctor" }; // Dummy user for UI demonstration
   const isLoading = false; // Assume loading is false for dummy data
-  const [selectedTimeSlot, setSelectedTimeSlot] = useState(""); // Keep this state for future UI
-  const [searchQuery, setSearchQuery] = useState(""); // Keep this state for future UI
+  const [_selectedTimeSlot, _setSelectedTimeSlot] = useState(""); // Keep this state for future UI
+  const [_searchQuery, _setSearchQuery] = useState(""); // Keep this state for future UI
 
   const [todayAppointments, setTodayAppointments] = useState<Appointment[]>([]);
   const [upcomingAppointments, setUpcomingApppointments] = useState<
@@ -85,20 +92,32 @@ export default function DoctorDashboard() {
   useEffect(() => {
     async function fetchAppointments() {
       try {
-        const todayRes = await axios.get<AppointmentApiResponse>(
-          `${url}/appointments`,
+        const res = await axios.get<AppointmentApiResponse>(
+          `${url}/all-appointments`,
           { withCredentials: true }
         );
-        if (todayRes.data.success) {
-          setTodayAppointments(todayRes.data.data);
-        }
-
-        const upcomingRes = await axios.get<AppointmentApiResponse>(
-          `${url}/appointments?upcoming=true`,
-          { withCredentials: true }
-        );
-        if (upcomingRes.data.success) {
-          setUpcomingApppointments(upcomingRes.data.data);
+        if (res.data.success) {
+          const allAppointments = res.data.data;
+          const now = new Date();
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          const tomorrow = new Date(today);
+          tomorrow.setDate(tomorrow.getDate() + 1);
+          
+          // Filter today's appointments
+          const todayApts = allAppointments.filter(apt => {
+            const appointmentDate = new Date(apt.date);
+            return appointmentDate >= today && appointmentDate < tomorrow;
+          });
+          
+          // Filter upcoming appointments (including today)
+          const upcoming = allAppointments.filter(apt => {
+            const appointmentDateTime = new Date(`${apt.date}T${apt.time}`);
+            return appointmentDateTime >= now;
+          });
+          
+          setTodayAppointments(todayApts);
+          setUpcomingApppointments(upcoming);
         }
       } catch (err) {
         if (axios.isAxiosError(err) && err.response) {
@@ -112,45 +131,7 @@ export default function DoctorDashboard() {
     fetchAppointments();
   }, []);
 
-  const patientChats = [
-    {
-      id: 1,
-      patient: "John Smith",
-      lastMessage: "Thank you for the prescription",
-      time: "10 min ago",
-      unread: 0,
-      avatar: "/placeholder.svg?height=40&width=40",
-    },
-    {
-      id: 2,
-      patient: "Sarah Wilson",
-      lastMessage: "I have a question about my medication",
-      time: "1 hour ago",
-      unread: 2,
-      avatar: "/placeholder.svg?height=40&width=40",
-    },
-    {
-      id: 3,
-      patient: "Michael Brown",
-      lastMessage: "When should I schedule my follow-up?",
-      time: "3 hours ago",
-      unread: 1,
-      avatar: "/placeholder.svg?height=40&width=40",
-    },
-  ];
-
-  const availableSlots = [
-    "9:00 AM",
-    "9:30 AM",
-    "10:00 AM",
-    "10:30 AM",
-    "11:00 AM",
-    "2:00 PM",
-    "2:30 PM",
-    "3:00 PM",
-    "3:30 PM",
-    "4:00 PM",
-  ];
+  // TODO: Implement patient chats and available slots functionality
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
@@ -280,11 +261,11 @@ export default function DoctorDashboard() {
                         <Avatar>
                           <AvatarImage
                             src={
-                              appointment.profilePicture || "/placeholder.svg"
+                              appointment.patient.profilePicture || "/placeholder.svg"
                             }
                           />
                           <AvatarFallback>
-                            {appointment.patientName
+                            {appointment.patient.name
                               .split(" ")
                               .map((n) => n[0])
                               .join("")}
@@ -292,24 +273,23 @@ export default function DoctorDashboard() {
                         </Avatar>
                         <div>
                           <h4 className="font-semibold text-gray-900 dark:text-white">
-                            {appointment.patientName}
+                            {appointment.patient.name}
                           </h4>
                           <p className="text-sm text-gray-600 dark:text-gray-300">
-                            {/* {new Date(appointment.appointmentTime.startTime).toLocaleDateString()} {" "} */}
-                            {new Date(appointment.appointmentTime.startTime)
-                              .toLocaleTimeString("en-US", {
-                                hour: "numeric",
-                                minute: "2-digit",
-                              })
-                              .replace(/ (AM|PM)/, "")}{" "}
-                            {" to "}
-                            {new Date(
-                              appointment.appointmentTime.endTime
-                            ).toLocaleTimeString("en-US", {
-                              hour: "numeric",
-                              minute: "2-digit",
-                            })}
+                            {new Date(appointment.date).toLocaleDateString("en-US")} at {appointment.time}
                           </p>
+                          <div className="flex gap-2 mt-1">
+                            <Badge variant={appointment.appointmentType === "ONLINE" ? "secondary" : "default"}>
+                              {appointment.appointmentType === "ONLINE" ? "Video Call" : "In-Person"}
+                            </Badge>
+                            <Badge variant={
+                              appointment.status === "PENDING" ? "outline" :
+                              appointment.status === "CONFIRMED" ? "default" :
+                              appointment.status === "COMPLETED" ? "secondary" : "destructive"
+                            }>
+                              {appointment.status}
+                            </Badge>
+                          </div>
                           {appointment.notes && (
                             <Badge className="bg-gray-200 text-black dark:bg-gray-600 dark:text-white/90">
                               {appointment.notes}
@@ -359,11 +339,11 @@ export default function DoctorDashboard() {
                         <Avatar>
                           <AvatarImage
                             src={
-                              appointment.profilePicture || "/placeholder.svg"
+                              appointment.patient.profilePicture || "/placeholder.svg"
                             }
                           />
                           <AvatarFallback>
-                            {appointment.patientName
+                            {appointment.patient.name
                               .split(" ")
                               .map((n) => n[0])
                               .join("")}
@@ -371,19 +351,23 @@ export default function DoctorDashboard() {
                         </Avatar>
                         <div>
                           <h4 className="font-semibold text-gray-900 dark:text-white">
-                            {appointment.patientName}
+                            {appointment.patient.name}
                           </h4>
                           <p className="text-sm text-gray-600 dark:text-gray-300">
-                            {new Date(
-                              appointment.appointmentTime.startTime
-                            ).toLocaleDateString()}{" "}
-                            {new Date(
-                              appointment.appointmentTime.startTime
-                            ).toLocaleTimeString("en-US", {
-                              hour: "numeric",
-                              minute: "2-digit",
-                            })}
+                            {new Date(appointment.date).toLocaleDateString("en-US")} at {appointment.time}
                           </p>
+                          <div className="flex gap-2 mt-1">
+                            <Badge variant={appointment.appointmentType === "ONLINE" ? "secondary" : "default"}>
+                              {appointment.appointmentType === "ONLINE" ? "Video Call" : "In-Person"}
+                            </Badge>
+                            <Badge variant={
+                              appointment.status === "PENDING" ? "outline" :
+                              appointment.status === "CONFIRMED" ? "default" :
+                              appointment.status === "COMPLETED" ? "secondary" : "destructive"
+                            }>
+                              {appointment.status}
+                            </Badge>
+                          </div>
                           {appointment.notes && (
                             <Badge className="bg-gray-200 text-black dark:bg-gray-600 dark:text-white/90">
                               {appointment.notes}
@@ -393,7 +377,7 @@ export default function DoctorDashboard() {
                       </div>
                       <Badge
                         variant={
-                          appointment.status === "Confirmed"
+                          appointment.status === "CONFIRMED"
                             ? "default"
                             : "secondary"
                         }

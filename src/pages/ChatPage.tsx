@@ -30,7 +30,7 @@ import {
   SendMessageToRoom,
   loadOneOnOneChatHistory,
   loadCityChatHistory,
-  loadRoomChatHistory,
+  loadRoomChatHistory as _loadRoomChatHistory,
 } from "@/sockets/socket";
 import { useAuthStore } from "@/store/authstore";
 
@@ -201,7 +201,7 @@ export default function ChatPage() {
 
   // Auto-scroll to bottom of messages
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    messagesEndRef.current?.scrollIntoView({ behavior: "auto" });
   }, [messages, aiMessages, selectedChat]); // Scroll when messages, aiMessages, or selectedChat changes
 
   // Load AI chat history when AI tab is selected
@@ -262,7 +262,7 @@ export default function ChatPage() {
   const formatAiResponse = (chat: any) => {
     // Handle both API response format (probable_causes) and database format (probableCauses)
     const probableCauses = chat.probable_causes || chat.probableCauses || [];
-    const { severity, recommendation, disclaimer } = chat;
+    const { severity: _severity, recommendation, disclaimer } = chat;
 
     let response = `**Probable Causes:**\n${probableCauses
       .map((cause: string) => `• ${cause}`)

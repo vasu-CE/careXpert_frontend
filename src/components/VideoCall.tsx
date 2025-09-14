@@ -1,17 +1,15 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";   
+import { useState } from "react";   
 import {
   MeetingProvider,
   useMeeting,
-  useParticipant,
 } from "@videosdk.live/react-sdk";
-import ReactPlayer from "react-player";
 
-function ParticipantView() {
-  return null
+function ParticipantView({ participantId }: { participantId: string }) {
+  return <div>Participant: {participantId}</div>
 }
 
 function MeetingView() {
-const [joined, setJoined] = useState(null);
+const [joined, setJoined] = useState<string | null>(null);
 //Get the method which will be used to join the meeting.
 //We will also get the participants list to display all participants
 const { join, participants } = useMeeting({
@@ -44,17 +42,23 @@ return (
   </div>
 );
 }
-const VideoCall = () => {
+interface VideoCallProps {
+  meetingId: string;
+  token: string;
+  name: string;
+}
+
+const VideoCall = ({ meetingId, token, name }: VideoCallProps) => {
  return (
   <MeetingProvider
   config={{
-    meetingId: "66vu-6ag4-bguw",
+    meetingId: meetingId,
     micEnabled: true,
     webcamEnabled: true,
-    name: "Vasu's Org",
+    name: name,
     debugMode : false
   }}
-  token="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhcGlrZXkiOiJhMTRmYjJkYy0xODcyLTQzMWItYTVlNy1kMTA0NThjNDJiMWIiLCJwZXJtaXNzaW9ucyI6WyJhbGxvd19qb2luIl0sImlhdCI6MTc1MTc5ODcwNSwiZXhwIjoxNzUxODg1MTA1fQ.M-d2a7TBP2v_WpxNMf4m_uXEYwr9n7Bh3JyIW8mEIbk"
+  token={token}
 >
   <MeetingView />
 </MeetingProvider>

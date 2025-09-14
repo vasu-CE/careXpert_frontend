@@ -34,15 +34,24 @@ import axios from "axios";
 import { toast } from "sonner";
 
 type Appointment = {
-  id : string,
-  status: 'PENDING' | 'COMPLETED' | 'CANCELLED'; 
-  doctorName: string;
-  profilePicture : string;
-  specialty: string;
-  location: string;
-  appointmentTime: {
-    start: string; 
-    end: string;
+  id: string;
+  status: 'PENDING' | 'CONFIRMED' | 'COMPLETED' | 'CANCELLED';
+  appointmentType: 'ONLINE' | 'OFFLINE';
+  date: string;
+  time: string;
+  notes?: string;
+  consultationFee?: number;
+  createdAt: string;
+  doctor: {
+    id: string;
+    name: string;
+    profilePicture?: string;
+    specialty: string;
+    clinicLocation: string;
+    experience: string;
+    education?: string;
+    bio?: string;
+    languages: string[];
   };
 }
 
@@ -119,15 +128,26 @@ export default function PatientDashboard() {
   }, [user, isLoading, navigate]);
 
   useEffect(() => {
-    async function fetchAppointment(){
+    async function fetchAppointments(){
       try{
-        const res = await axios.get<AppointmentApiResponse>(`${url}/upcoming-appointments` , {withCredentials : true});
+        const res = await axios.get<AppointmentApiResponse>(`${url}/all-appointments` , {withCredentials : true});
         if(res.data.success){
-          setUpcomingAppointments(res.data.data);
-        }
-        const res2 = await axios.get<AppointmentApiResponse>(`${url}/past-appointments` , {withCredentials : true});
-        if(res.data.success){
-          setPastAppointments(res2.data.data);
+          const allAppointments = res.data.data;
+          const now = new Date();
+          
+          // Separate upcoming and past appointments
+          const upcoming = allAppointments.filter(apt => {
+            const appointmentDateTime = new Date(`${apt.date}T${apt.time}`);
+            return appointmentDateTime >= now;
+          });
+          
+          const past = allAppointments.filter(apt => {
+            const appointmentDateTime = new Date(`${apt.date}T${apt.time}`);
+            return appointmentDateTime < now;
+          });
+          
+          setUpcomingAppointments(upcoming);
+          setPastAppointments(past);
         }
       }catch(err){
         if(axios.isAxiosError(err) && err.response){
@@ -138,7 +158,7 @@ export default function PatientDashboard() {
       }
     };
 
-    fetchAppointment();
+    fetchAppointments();
   },[])
 
   // const doctors = [
@@ -245,20 +265,12 @@ export default function PatientDashboard() {
               <Calendar className="h-4 w-4" />
               Appointments
             </TabsTrigger>
-            <TabsTrigger value="doctors" className="flex items-center gap-2">
-              <Search className="h-4 w-4" />
-              Find Doctors
-            </TabsTrigger>
             <TabsTrigger
               value="prescriptions"
               className="flex items-center gap-2"
             >
               <FileText className="h-4 w-4" />
               Prescriptions
-            </TabsTrigger>
-            <TabsTrigger value="chat" className="flex items-center gap-2">
-              <MessageCircle className="h-4 w-4" />
-              Chat
             </TabsTrigger>
           </TabsList>
 
@@ -282,10 +294,10 @@ export default function PatientDashboard() {
                       <div className="flex items-center gap-3">
                         <Avatar>
                           <AvatarImage
-                            src={appointment.profilePicture || "/placeholder.svg"}
+                            src={appointment.doctor.profilePicture || "/placeholder.svg"}
                           />
                           <AvatarFallback>
-                            {appointment.doctorName
+                            {appointment.doctor.name
                               .split(" ")
                               .map((n) => n[0])
                               .join("")}
@@ -293,26 +305,29 @@ export default function PatientDashboard() {
                         </Avatar>
                         <div>
                           <h4 className="font-semibold text-gray-900 dark:text-white">
-                            {appointment.doctorName}
+                            {appointment.doctor.name}
                           </h4>
                           <p className="text-sm text-gray-600 dark:text-gray-300">
-                            {appointment.specialty}
+                            {appointment.doctor.specialty}
                           </p>
                           <p className="text-sm text-gray-500 dark:text-gray-400">
-                          {new Date(appointment.appointmentTime.start).toLocaleDateString("en-US")}
+                            {new Date(appointment.date).toLocaleDateString("en-US")}
                             {" "}
                             at{" "}
-                            {new Date(appointment.appointmentTime.start).toLocaleTimeString('en-US' , {
-                              hour : "numeric",
-                              minute : "2-digit"
-                            })}
-                            {" "}
-                            to{" "}
-                            {new Date(appointment.appointmentTime.end).toLocaleTimeString('en-US' , {
-                              hour : 'numeric',
-                              minute : '2-digit'
-                            })}
+                            {appointment.time}
                           </p>
+                          <div className="flex gap-2 mt-1">
+                            <Badge variant={appointment.appointmentType === "ONLINE" ? "secondary" : "default"}>
+                              {appointment.appointmentType === "ONLINE" ? "Video Call" : "In-Person"}
+                            </Badge>
+                            <Badge variant={
+                              appointment.status === "PENDING" ? "outline" :
+                              appointment.status === "CONFIRMED" ? "default" :
+                              appointment.status === "COMPLETED" ? "secondary" : "destructive"
+                            }>
+                              {appointment.status}
+                            </Badge>
+                          </div>
                         </div>
                       </div>
                       {/* <Badge
@@ -346,10 +361,10 @@ export default function PatientDashboard() {
                       <div className="flex items-center gap-3">
                         <Avatar>
                           <AvatarImage
-                            src={appointment.profilePicture || "/placeholder.svg"}
+                            src={appointment.doctor.profilePicture || "/placeholder.svg"}
                           />
                           <AvatarFallback>
-                            {appointment.doctorName
+                            {appointment.doctor.name
                               .split(" ")
                               .map((n) => n[0])
                               .join("")}
@@ -357,26 +372,29 @@ export default function PatientDashboard() {
                         </Avatar>
                         <div>
                           <h4 className="font-semibold text-gray-900 dark:text-white">
-                            {appointment.doctorName}
+                            {appointment.doctor.name}
                           </h4>
                           <p className="text-sm text-gray-600 dark:text-gray-300">
-                            {appointment.specialty}
+                            {appointment.doctor.specialty}
                           </p>
                           <p className="text-sm text-gray-500 dark:text-gray-400">
-                            {new Date(appointment.appointmentTime.start).toLocaleDateString("en-US")}
+                            {new Date(appointment.date).toLocaleDateString("en-US")}
                             {" "}
                             at{" "}
-                            {new Date(appointment.appointmentTime.start).toLocaleTimeString('en-US' , {
-                              hour : "numeric",
-                              minute : "2-digit"
-                            })}
-                            {" "}
-                            to{" "}
-                            {new Date(appointment.appointmentTime.end).toLocaleTimeString('en-US' , {
-                              hour : 'numeric',
-                              minute : '2-digit'
-                            })}
+                            {appointment.time}
                           </p>
+                          <div className="flex gap-2 mt-1">
+                            <Badge variant={appointment.appointmentType === "ONLINE" ? "secondary" : "default"}>
+                              {appointment.appointmentType === "ONLINE" ? "Video Call" : "In-Person"}
+                            </Badge>
+                            <Badge variant={
+                              appointment.status === "PENDING" ? "outline" :
+                              appointment.status === "CONFIRMED" ? "default" :
+                              appointment.status === "COMPLETED" ? "secondary" : "destructive"
+                            }>
+                              {appointment.status}
+                            </Badge>
+                          </div>
                         </div>
                       </div>
                       <Badge
@@ -390,85 +408,6 @@ export default function PatientDashboard() {
                 </CardContent>
               </Card>
             </div>
-          </TabsContent>
-
-          {/* Find Doctors Tab */}
-          <TabsContent value="doctors" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Find Doctors</CardTitle>
-                <CardDescription>
-                  Search for doctors by name, specialty, or location
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="flex gap-4 mb-6">
-                  <div className="relative flex-1">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                    <Input
-                      placeholder="Search doctors, specialties, or locations..."
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      className="pl-10"
-                    />
-                  </div>
-                  {/* Filter/Sort options would go here */}
-                </div>
-                {/* Doctor results grid */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {doctors.map((doctor) => (
-                    <Card
-                      key={doctor.id}
-                      className="flex flex-col items-center text-center p-6"
-                    >
-                      <Avatar className="h-20 w-20 mb-4">
-                        <AvatarImage
-                          src={doctor.user.profilePicture || "/placeholder.svg"}
-                        />
-                        <AvatarFallback>
-                          {doctor.user.name
-                            .split(" ")
-                            .map((n) => n[0])
-                            .join("")}
-                        </AvatarFallback>
-                      </Avatar>
-                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                        {doctor.user.name}
-                      </h3>
-                      <p className="text-blue-600 dark:text-blue-400 text-sm mb-2">
-                        {doctor.specialty}
-                      </p>
-                      <div className="flex items-center gap-1 text-gray-600 dark:text-gray-300 text-sm mb-2">
-                        <MapPin className="h-4 w-4" /> {doctor.clinicLocation}
-                      </div>
-                      <div className="flex items-center gap-1 text-gray-600 dark:text-gray-300 text-sm mb-4">
-                        <Star className="h-4 w-4 text-yellow-400 fill-current" />{" "}
-                        ({doctor.experience})
-                      </div>
-                      <Link
-                        to={`/book-appointment/${doctor.id}`}
-                        className="w-full"
-                      >
-                        <Button
-                          className="w-full"
-                          variant={doctor.nextAvailable ? "default" : "outline"}
-                        >
-                          {doctor.nextAvailable ? (
-                            <>
-                              {" "}
-                              <Heart className="h-4 w-4 mr-2" /> Book
-                              Appointment{" "}
-                            </>
-                          ) : (
-                            "Not Available"
-                          )}
-                        </Button>
-                      </Link>
-                    </Card>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
           </TabsContent>
 
           {/* Prescriptions Tab */}
@@ -514,27 +453,6 @@ export default function PatientDashboard() {
                     </Button>
                   </div>
                 ))}
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* Chat Tab */}
-          <TabsContent value="chat" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Health Chat</CardTitle>
-                <CardDescription>
-                  Chat with CareXpert AI or your doctors
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <p className="text-gray-600 dark:text-gray-300">
-                  {" "}
-                  Chat functionality will be available here.{" "}
-                </p>
-                <Link to="/chat">
-                  <Button className="mt-4">Go to Chat Hub</Button>
-                </Link>
               </CardContent>
             </Card>
           </TabsContent>
