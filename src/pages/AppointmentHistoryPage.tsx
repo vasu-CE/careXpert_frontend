@@ -26,6 +26,7 @@ type Appointment = {
   consultationFee?: number;
   createdAt: string;
   updatedAt: string;
+  prescriptionId?: string | null;
   doctor: {
     id: string;
     name: string;
@@ -112,19 +113,40 @@ export default function AppointmentHistoryPage() {
   };
 
   const getStatusBadge = (status: string) => {
-    const statusConfig = {
-      PENDING: { variant: "secondary" as const, label: "Request Sent", color: "text-yellow-600" },
-      CONFIRMED: { variant: "default" as const, label: "Confirmed", color: "text-green-600" },
-      COMPLETED: { variant: "default" as const, label: "Completed", color: "text-blue-600" },
-      CANCELLED: { variant: "destructive" as const, label: "Cancelled", color: "text-red-600" },
-      REJECTED: { variant: "destructive" as const, label: "Rejected", color: "text-red-600" },
+    const base =
+      "backdrop-blur-sm rounded-full px-2.5 py-1 border shadow-sm text-xs font-medium";
+    const map: Record<string, { label: string; cls: string }> = {
+      PENDING: {
+        label: "Pending",
+        cls:
+          "bg-gradient-to-r from-amber-400/15 to-yellow-500/15 text-amber-700 dark:text-amber-200 border-amber-400/30",
+      },
+      CONFIRMED: {
+        label: "Confirmed",
+        cls:
+          "bg-gradient-to-r from-emerald-400/15 to-teal-500/15 text-emerald-700 dark:text-emerald-200 border-emerald-400/30",
+      },
+      COMPLETED: {
+        label: "Completed",
+        cls:
+          "bg-gradient-to-r from-sky-400/15 to-indigo-500/15 text-sky-700 dark:text-sky-200 border-sky-400/30",
+      },
+      CANCELLED: {
+        label: "Cancelled",
+        cls:
+          "bg-gradient-to-r from-rose-400/15 to-red-500/15 text-rose-700 dark:text-rose-200 border-rose-400/30",
+      },
+      REJECTED: {
+        label: "Rejected",
+        cls:
+          "bg-gradient-to-r from-rose-400/15 to-red-500/15 text-rose-700 dark:text-rose-200 border-rose-400/30",
+      },
     };
 
-    const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.PENDING;
-    
+    const cfg = map[status] || map["PENDING"];
     return (
-      <Badge variant={config.variant} className={config.color}>
-        {config.label}
+      <Badge variant="outline" className={`${base} ${cfg.cls}`}>
+        {cfg.label}
       </Badge>
     );
   };
@@ -369,6 +391,17 @@ export default function AppointmentHistoryPage() {
                       <span className="font-medium text-gray-900 dark:text-white">
                         ₹{appointment.consultationFee}
                       </span>
+                    </div>
+                  )}
+
+                  {appointment.prescriptionId && (
+                    <div className="mt-4">
+                      <Button
+                        variant="secondary"
+                        onClick={() => window.open(`${url}/patient/prescription-pdf/${appointment.prescriptionId}`, '_blank')}
+                      >
+                        View Prescription
+                      </Button>
                     </div>
                   )}
                 </CardContent>

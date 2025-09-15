@@ -63,6 +63,7 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
         { href: "/dashboard/doctor", label: "Home", icon: Home },
         { href: "/doctor/appointments", label: "Appointment Requests", icon: Calendar },
         { href: "/doctor/appointment-history", label: "Appointment History", icon: Clock },
+        { href: "/chat", label: "Chat", icon: MessageCircle },
         { href: "/notifications", label: "Notifications", icon: Bell, badge: unreadCount },
         { href: "/profile", label: "Profile", icon: User },
       ];

@@ -42,6 +42,7 @@ type AppointmentRequest = {
   notes?: string;
   consultationFee?: number;
   createdAt: string;
+  prescriptionId?: string | null;
   patient: {
     id: string;
     name: string;
@@ -73,6 +74,9 @@ export default function DoctorAppointmentsPage() {
   const [selectedAppointment, setSelectedAppointment] = useState<AppointmentRequest | null>(null);
   const [rejectionReason, setRejectionReason] = useState('');
   const [processing, setProcessing] = useState(false);
+  const [prescriptionDialogOpen, setPrescriptionDialogOpen] = useState(false);
+  const [prescriptionText, setPrescriptionText] = useState('');
+  const [prescriptionForAppointmentId, setPrescriptionForAppointmentId] = useState<string | null>(null);
 
   const user = useAuthStore((state) => state.user);
   const url = `${import.meta.env.VITE_BASE_URL}/api`;
@@ -129,7 +133,9 @@ export default function DoctorAppointmentsPage() {
 
       if (response.data.success) {
         toast.success("Appointment accepted successfully!");
-        fetchAppointments(); // Refresh the list
+        setPrescriptionForAppointmentId(appointmentId);
+        setPrescriptionDialogOpen(true);
+        fetchAppointments();
       }
     } catch (error) {
       console.error("Error accepting appointment:", error);
@@ -137,6 +143,71 @@ export default function DoctorAppointmentsPage() {
         toast.error(error.response.data?.message || "Failed to accept appointment");
       } else {
         toast.error("Failed to accept appointment");
+      }
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  const handleSubmitPrescription = async () => {
+    if (!prescriptionForAppointmentId || !prescriptionText.trim()) {
+      toast.error('Please enter prescription');
+      return;
+    }
+    try {
+      setProcessing(true);
+      const res = await axios.post(
+        `${url}/doctor/appointments/${prescriptionForAppointmentId}/prescription`,
+        { prescriptionText: prescriptionText.trim() },
+        { withCredentials: true }
+      );
+      if (res.data.success) {
+        toast.success('Prescription saved');
+        setPrescriptionDialogOpen(false);
+        setPrescriptionText('');
+        setPrescriptionForAppointmentId(null);
+        fetchAppointments();
+      }
+    } catch (error) {
+      if (axios.isAxiosError(error) && error.response) {
+        toast.error(error.response.data?.message || 'Failed to save prescription');
+      } else {
+        toast.error('Failed to save prescription');
+      }
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  const canMarkCompleted = (appointment: AppointmentRequest) => {
+    if (appointment.appointmentType !== 'OFFLINE' || appointment.status !== 'CONFIRMED') return false;
+    try {
+      const start = new Date(appointment.date);
+      const [hh, mm] = appointment.time.split(':');
+      start.setHours(parseInt(hh, 10), parseInt(mm, 10), 0, 0);
+      return start.getTime() <= Date.now();
+    } catch {
+      return true;
+    }
+  };
+
+  const handleMarkCompleted = async (appointmentId: string) => {
+    try {
+      setProcessing(true);
+      const res = await axios.patch(
+        `${url}/doctor/appointments/${appointmentId}/complete`,
+        {},
+        { withCredentials: true }
+      );
+      if (res.data.success) {
+        toast.success('Appointment marked as completed');
+        fetchAppointments();
+      }
+    } catch (error) {
+      if (axios.isAxiosError(error) && error.response) {
+        toast.error(error.response.data?.message || 'Failed to update');
+      } else {
+        toast.error('Failed to update');
       }
     } finally {
       setProcessing(false);
@@ -180,19 +251,40 @@ export default function DoctorAppointmentsPage() {
   };
 
   const getStatusBadge = (status: string) => {
-    const statusConfig = {
-      PENDING: { variant: "secondary" as const, label: "Pending", color: "text-yellow-600" },
-      CONFIRMED: { variant: "default" as const, label: "Confirmed", color: "text-green-600" },
-      COMPLETED: { variant: "default" as const, label: "Completed", color: "text-blue-600" },
-      CANCELLED: { variant: "destructive" as const, label: "Cancelled", color: "text-red-600" },
-      REJECTED: { variant: "destructive" as const, label: "Rejected", color: "text-red-600" },
+    const base =
+      "backdrop-blur-sm rounded-full px-2.5 py-1 border shadow-sm text-xs font-medium";
+    const map: Record<string, { label: string; cls: string }> = {
+      PENDING: {
+        label: "Pending",
+        cls:
+          "bg-gradient-to-r from-amber-400/15 to-yellow-500/15 text-amber-700 dark:text-amber-200 border-amber-400/30",
+      },
+      CONFIRMED: {
+        label: "Confirmed",
+        cls:
+          "bg-gradient-to-r from-emerald-400/15 to-teal-500/15 text-emerald-700 dark:text-emerald-200 border-emerald-400/30",
+      },
+      COMPLETED: {
+        label: "Completed",
+        cls:
+          "bg-gradient-to-r from-sky-400/15 to-indigo-500/15 text-sky-700 dark:text-sky-200 border-sky-400/30",
+      },
+      CANCELLED: {
+        label: "Cancelled",
+        cls:
+          "bg-gradient-to-r from-rose-400/15 to-red-500/15 text-rose-700 dark:text-rose-200 border-rose-400/30",
+      },
+      REJECTED: {
+        label: "Rejected",
+        cls:
+          "bg-gradient-to-r from-rose-400/15 to-red-500/15 text-rose-700 dark:text-rose-200 border-rose-400/30",
+      },
     };
 
-    const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.PENDING;
-    
+    const cfg = map[status] || map["PENDING"];
     return (
-      <Badge variant={config.variant} className={config.color}>
-        {config.label}
+      <Badge variant="outline" className={`${base} ${cfg.cls}`}>
+        {cfg.label}
       </Badge>
     );
   };
@@ -529,6 +621,38 @@ export default function DoctorAppointmentsPage() {
                           </p>
                         </div>
                       )}
+
+                      <div className="mt-4 flex flex-wrap gap-2">
+                        {appointment.status === 'CONFIRMED' && (
+                          <Button
+                            variant="outline"
+                            onClick={() => {
+                              setPrescriptionForAppointmentId(appointment.id);
+                              setPrescriptionDialogOpen(true);
+                            }}
+                            disabled={processing}
+                          >
+                            Upload Prescription
+                          </Button>
+                        )}
+                        {appointment.prescriptionId && (
+                          <Button
+                            variant="secondary"
+                            onClick={() => window.open(`${url}/patient/prescription-pdf/${appointment.prescriptionId}`, '_blank')}
+                          >
+                            View Prescription
+                          </Button>
+                        )}
+                        {canMarkCompleted(appointment) && (
+                          <Button
+                            className="bg-blue-600 hover:bg-blue-700 text-white"
+                            onClick={() => handleMarkCompleted(appointment.id)}
+                            disabled={processing}
+                          >
+                            Mark as Completed
+                          </Button>
+                        )}
+                      </div>
                     </CardContent>
                   </Card>
                 </motion.div>
@@ -537,6 +661,46 @@ export default function DoctorAppointmentsPage() {
           )}
         </div>
       )}
+
+      {/* Prescription Dialog */}
+      <Dialog open={prescriptionDialogOpen} onOpenChange={setPrescriptionDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Upload Prescription</DialogTitle>
+            <DialogDescription>
+              Add prescription details for this appointment. Patients will be able to view it as a PDF.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="prescription-text">Prescription</Label>
+              <Textarea
+                id="prescription-text"
+                placeholder="Medication, dosage, instructions..."
+                value={prescriptionText}
+                onChange={(e) => setPrescriptionText(e.target.value)}
+                className="mt-1"
+                rows={8}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setPrescriptionDialogOpen(false);
+                setPrescriptionText('');
+                setPrescriptionForAppointmentId(null);
+              }}
+            >
+              Cancel
+            </Button>
+            <Button onClick={handleSubmitPrescription} disabled={processing || !prescriptionText.trim()}>
+              {processing ? 'Saving...' : 'Save Prescription'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
