@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Outlet } from "react-router-dom";
 import { Sidebar } from "./sidebar";
-import { Navbar } from "./Navbar";
+import { Navbar } from "./navbar";
 import { Button } from "./ui/button";
 import { Menu } from "lucide-react";
 import { useAuthStore } from "@/store/authstore";
@@ -11,7 +11,7 @@ export default function DashboardLayout() {
   const user = useAuthStore((state) => state.user);
 
   return (
-    <div className="min-h-screen bg-white dark:bg-gray-900">
+    <div className="h-screen bg-white dark:bg-gray-900 flex flex-col overflow-hidden">
       {/* Fixed Top Navbar */}
       <Navbar />
       
@@ -19,7 +19,7 @@ export default function DashboardLayout() {
       <Sidebar isOpen={sidebarOpen} onToggle={() => setSidebarOpen(!sidebarOpen)} />
       
       {/* Main Content Area */}
-      <div className="pt-16 md:ml-64">
+      <div className="flex-1 flex pt-16 md:ml-64 overflow-hidden">
         {/* Mobile Menu Button */}
         {user && (
           <div className="md:hidden fixed top-16 left-4 z-30">
@@ -35,7 +35,7 @@ export default function DashboardLayout() {
         )}
 
         {/* Scrollable Content */}
-        <main className="min-h-screen">
+        <main className="flex-1 overflow-y-auto scrollbar-hide">
           <Outlet />
         </main>
       </div>

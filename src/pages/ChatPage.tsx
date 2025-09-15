@@ -16,7 +16,6 @@ import {
   TabsTrigger,
 } from "../components/ui/tabs";
 import { Avatar, AvatarFallback, AvatarImage } from "../components/ui/avatar";
-import { ScrollArea } from "../components/ui/scroll-area";
 import { MessageCircle, Bot, Users, Send, MapPin, Plus, Menu, X, User, Stethoscope } from "lucide-react";
 import axios from "axios";
 import { toast } from "sonner";
@@ -212,13 +211,11 @@ export default function ChatPage() {
     
     // Only scroll if there are messages to scroll to
     if ((messages.length > 0 || aiMessages.length > 0) && messagesEndRef.current) {
-      // Small delay to ensure DOM is updated
-      setTimeout(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-      }, 100);
+      messagesEndRef.current?.scrollIntoView({ behavior: "auto" });
     }
   }, [messages, aiMessages, isInitialLoad]); // Added isInitialLoad to dependencies
 
+  
   // Load AI chat history when AI tab is selected
   useEffect(() => {
     if (selectedChat === "ai") {
@@ -603,7 +600,7 @@ export default function ChatPage() {
   }, [selectedChat, user]);
 
   return (
-    <div className="h-[calc(100vh-5rem)] flex flex-col mt-2">
+    <div className="h-[calc(100%-1rem)] overflow-hidden flex flex-col mt-4">
       {/* Mobile Header */}
       <div className="lg:hidden p-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
         <div className="flex items-center justify-between">
@@ -618,7 +615,7 @@ export default function ChatPage() {
         </div>
       </div>
       
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex-1 flex overflow-hidden h-full">
         {/* Mobile Overlay */}
         {showSidebar && (
           <div 
@@ -671,7 +668,7 @@ export default function ChatPage() {
                       CareXpert AI
                     </CardTitle>
                   </CardHeader>
-                  <CardContent className="flex-1 overflow-y-auto">
+                  <CardContent className="flex-1 overflow-y-auto scrollbar-hide">
                     <div
                       className={`p-3 rounded-lg cursor-pointer transition-colors ${
                         selectedChat === "ai"
@@ -710,7 +707,7 @@ export default function ChatPage() {
                       Doctor Chats
                     </CardTitle>
                   </CardHeader>
-                  <CardContent className="space-y-3 flex-1 overflow-y-auto">
+                  <CardContent className="space-y-3 flex-1 overflow-y-auto scrollbar-hide">
                     {doctors.length > 0 ? (
                       doctors.map((chat) => (
                         <div
@@ -779,7 +776,7 @@ export default function ChatPage() {
                       <CardDescription>Chat with your patients</CardDescription>
                     </CardHeader>
                     <CardContent className="p-0">
-                      <ScrollArea className="h-[500px]">
+                      <div className="h-[500px] overflow-y-auto scrollbar-hide">
                         {dmConversations.length > 0 ? (
                           dmConversations.map((conversation) => (
                             <div
@@ -843,7 +840,7 @@ export default function ChatPage() {
                             </p>
                           </div>
                         )}
-                      </ScrollArea>
+                      </div>
                     </CardContent>
                   </Card>
                 </TabsContent>
@@ -864,7 +861,7 @@ export default function ChatPage() {
                     </CardTitle>
                   </CardHeader>
 
-                  <CardContent className="space-y-3 flex-1 overflow-y-auto">
+                  <CardContent className="space-y-3 flex-1 overflow-y-auto scrollbar-hide">
                     {cityRoom.length > 0 ? (
                       cityRoom.map((room) => (
                         <div
@@ -999,8 +996,8 @@ export default function ChatPage() {
               </CardHeader>
 
             {/* Messages Area */}
-            <CardContent className="flex-1 p-4 overflow-y-auto">
-              <ScrollArea className="h-full">
+            <CardContent className="flex-1 p-4 overflow-y-auto scrollbar-hide">
+              <div className="h-full">
                   {selectedChat === "ai" && (
                     <>
                       {aiMessages.map((msg) => (
@@ -1157,7 +1154,7 @@ export default function ChatPage() {
                     ))}
                   <div ref={messagesEndRef} />{" "}
                   {/* Element to scroll into view */}
-                </ScrollArea>
+                </div>
               </CardContent>
 
               {/* Community Members Section */}
@@ -1168,7 +1165,7 @@ export default function ChatPage() {
                   <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
                     Community Members ({communityMembers.length})
                   </h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 max-h-48 overflow-y-auto">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 max-h-48 overflow-y-auto scrollbar-hide">
                     {communityMembers.map((member) => (
                       <div
                         key={member.id}
