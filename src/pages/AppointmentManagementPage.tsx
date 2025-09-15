@@ -218,7 +218,7 @@ export default function AppointmentManagementPage() {
                             appointment.status === "COMPLETED" ? "secondary" :
                             appointment.status === "REJECTED" ? "destructive" : "secondary"
                           }>
-                            {appointment.status}
+                            {appointment.status === "PENDING" ? "Request Sent" : appointment.status}
                           </Badge>
                         </div>
                       </div>
@@ -317,7 +317,7 @@ export default function AppointmentManagementPage() {
                             appointment.status === "COMPLETED" ? "secondary" :
                             appointment.status === "REJECTED" ? "destructive" : "secondary"
                           }>
-                            {appointment.status}
+                            {appointment.status === "PENDING" ? "Request Sent" : appointment.status}
                           </Badge>
                         </div>
                       </div>

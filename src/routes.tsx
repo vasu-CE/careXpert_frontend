@@ -10,6 +10,8 @@ import DoctorProfilePage from "./pages/DoctorProfilePage";
 import BookAppointmentPage from "./pages/BookAppointmentPage";
 import ProfilePage from "./pages/ProfilePage";
 import AppointmentManagementPage from "./pages/AppointmentManagementPage";
+import DoctorAppointmentsPage from "./pages/DoctorAppointmentsPage";
+import DoctorAppointmentHistoryPage from "./pages/DoctorAppointmentHistoryPage";
 import PrescriptionsPage from "./pages/PrescriptionsPage";
 import NotificationsPage from "./pages/NotificationsPage";
 import DoctorPendingRequestsPage from "./pages/DoctorPendingRequestsPage";
@@ -40,6 +42,12 @@ export default function AppRoutes() {
       {/* Other authenticated routes with sidebar */}
       <Route path="/appointments" element={<DashboardLayout />}>
         <Route index element={<AppointmentManagementPage />} />
+      </Route>
+      <Route path="/doctor/appointments" element={<DashboardLayout />}>
+        <Route index element={<DoctorAppointmentsPage />} />
+      </Route>
+      <Route path="/doctor/appointment-history" element={<DashboardLayout />}>
+        <Route index element={<DoctorAppointmentHistoryPage />} />
       </Route>
       <Route path="/prescriptions" element={<DashboardLayout />}>
         <Route index element={<PrescriptionsPage />} />

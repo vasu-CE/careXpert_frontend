@@ -61,7 +61,8 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
     if (user.role === "DOCTOR") {
       return [
         { href: "/dashboard/doctor", label: "Home", icon: Home },
-        { href: "/appointments", label: "My Appointments", icon: Calendar },
+        { href: "/doctor/appointments", label: "Appointment Requests", icon: Calendar },
+        { href: "/doctor/appointment-history", label: "Appointment History", icon: Clock },
         { href: "/notifications", label: "Notifications", icon: Bell, badge: unreadCount },
         { href: "/profile", label: "Profile", icon: User },
       ];

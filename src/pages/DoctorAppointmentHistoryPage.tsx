@@ -1,8 +1,23 @@
 import { useState, useEffect } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card";
-import { Badge } from "../components/ui/badge";
 import { Button } from "../components/ui/button";
-import { Calendar, Clock, User, MapPin, FileText, Mail, Filter, Search } from "lucide-react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "../components/ui/card";
+import { Badge } from "../components/ui/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "../components/ui/avatar";
+import {
+  Calendar,
+  Clock,
+  FileText,
+  User,
+  Mail,
+  Filter,
+  Search,
+} from "lucide-react";
 import { useAuthStore } from "@/store/authstore";
 import axios from "axios";
 import { toast } from "sonner";
@@ -16,7 +31,7 @@ import {
   SelectValue,
 } from "../components/ui/select";
 
-type Appointment = {
+type AppointmentHistory = {
   id: string;
   status: 'PENDING' | 'CONFIRMED' | 'COMPLETED' | 'CANCELLED' | 'REJECTED';
   appointmentType: 'ONLINE' | 'OFFLINE';
@@ -26,16 +41,18 @@ type Appointment = {
   consultationFee?: number;
   createdAt: string;
   updatedAt: string;
-  doctor: {
+  patient: {
     id: string;
     name: string;
+    email: string;
     profilePicture?: string;
-    specialty: string;
-    clinicLocation: string;
-    experience: string;
-    education?: string;
-    bio?: string;
-    languages: string[];
+    medicalHistory?: string;
+  };
+  timeSlot?: {
+    id: string;
+    startTime: string;
+    endTime: string;
+    consultationFee?: number;
   };
 };
 
@@ -43,34 +60,35 @@ type AppointmentApiResponse = {
   statusCode: number;
   message: string;
   success: boolean;
-  data: Appointment[];
+  data: AppointmentHistory[];
 };
 
-export default function AppointmentHistoryPage() {
-  const [appointments, setAppointments] = useState<Appointment[]>([]);
-  const [filteredAppointments, setFilteredAppointments] = useState<Appointment[]>([]);
+export default function DoctorAppointmentHistoryPage() {
+  const [appointments, setAppointments] = useState<AppointmentHistory[]>([]);
+  const [filteredAppointments, setFilteredAppointments] = useState<AppointmentHistory[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [dateFilter, setDateFilter] = useState<string>('all');
 
   const user = useAuthStore((state) => state.user);
   const url = `${import.meta.env.VITE_BASE_URL}/api`;
 
   useEffect(() => {
-    if (user?.role === "PATIENT") {
+    if (user?.role === "DOCTOR") {
       fetchAppointmentHistory();
     }
   }, [user]);
 
   useEffect(() => {
     filterAppointments();
-  }, [appointments, searchTerm, statusFilter]);
+  }, [appointments, searchTerm, statusFilter, dateFilter]);
 
   const fetchAppointmentHistory = async () => {
     try {
       setLoading(true);
       const response = await axios.get<AppointmentApiResponse>(
-        `${url}/patient/all-appointments`,
+        `${url}/doctor/all-appointments`,
         { withCredentials: true }
       );
 
@@ -95,14 +113,44 @@ export default function AppointmentHistoryPage() {
     // Search filter
     if (searchTerm) {
       filtered = filtered.filter(appointment =>
-        appointment.doctor.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        appointment.doctor.specialty.toLowerCase().includes(searchTerm.toLowerCase())
+        appointment.patient.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        appointment.patient.email.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
 
     // Status filter
     if (statusFilter !== 'all') {
       filtered = filtered.filter(appointment => appointment.status === statusFilter);
+    }
+
+    // Date filter
+    if (dateFilter !== 'all') {
+      const now = new Date();
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      
+      filtered = filtered.filter(appointment => {
+        const appointmentDate = new Date(appointment.date);
+        
+        switch (dateFilter) {
+          case 'today':
+            return appointmentDate.toDateString() === today.toDateString();
+          case 'thisWeek':
+            const weekStart = new Date(today);
+            weekStart.setDate(today.getDate() - today.getDay());
+            const weekEnd = new Date(weekStart);
+            weekEnd.setDate(weekStart.getDate() + 6);
+            return appointmentDate >= weekStart && appointmentDate <= weekEnd;
+          case 'thisMonth':
+            return appointmentDate.getMonth() === now.getMonth() && 
+                   appointmentDate.getFullYear() === now.getFullYear();
+          case 'past':
+            return appointmentDate < today;
+          case 'upcoming':
+            return appointmentDate >= today;
+          default:
+            return true;
+        }
+      });
     }
 
     // Sort by date (most recent first)
@@ -113,8 +161,8 @@ export default function AppointmentHistoryPage() {
 
   const getStatusBadge = (status: string) => {
     const statusConfig = {
-      PENDING: { variant: "secondary" as const, label: "Request Sent", color: "text-yellow-600" },
-      CONFIRMED: { variant: "default" as const, label: "Confirmed", color: "text-green-600" },
+      PENDING: { variant: "secondary" as const, label: "Pending", color: "text-yellow-600" },
+      CONFIRMED: { variant: "default" as const, label: "Confirmed", color: "text-white/90" },
       COMPLETED: { variant: "default" as const, label: "Completed", color: "text-blue-600" },
       CANCELLED: { variant: "destructive" as const, label: "Cancelled", color: "text-red-600" },
       REJECTED: { variant: "destructive" as const, label: "Rejected", color: "text-red-600" },
@@ -177,7 +225,7 @@ export default function AppointmentHistoryPage() {
           Appointment History
         </h1>
         <p className="text-gray-600 dark:text-gray-400">
-          View your past and upcoming appointments
+          View and manage your appointment history
         </p>
       </div>
 
@@ -199,7 +247,7 @@ export default function AppointmentHistoryPage() {
               <div className="text-2xl font-bold text-yellow-600">
                 {statusCounts.pending}
               </div>
-              <div className="text-sm text-gray-600 dark:text-gray-400">Request Sent</div>
+              <div className="text-sm text-gray-600 dark:text-gray-400">Pending</div>
             </div>
           </CardContent>
         </Card>
@@ -253,7 +301,7 @@ export default function AppointmentHistoryPage() {
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                 <Input
-                  placeholder="Search by doctor name or specialty..."
+                  placeholder="Search by patient name or email..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-10"
@@ -266,11 +314,24 @@ export default function AppointmentHistoryPage() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Statuses</SelectItem>
-                <SelectItem value="PENDING">Request Sent</SelectItem>
+                <SelectItem value="PENDING">Pending</SelectItem>
                 <SelectItem value="CONFIRMED">Confirmed</SelectItem>
                 <SelectItem value="COMPLETED">Completed</SelectItem>
                 <SelectItem value="CANCELLED">Cancelled</SelectItem>
                 <SelectItem value="REJECTED">Rejected</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={dateFilter} onValueChange={setDateFilter}>
+              <SelectTrigger className="w-full md:w-48">
+                <SelectValue placeholder="Filter by date" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Dates</SelectItem>
+                <SelectItem value="today">Today</SelectItem>
+                <SelectItem value="thisWeek">This Week</SelectItem>
+                <SelectItem value="thisMonth">This Month</SelectItem>
+                <SelectItem value="past">Past</SelectItem>
+                <SelectItem value="upcoming">Upcoming</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -302,20 +363,24 @@ export default function AppointmentHistoryPage() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.3 }}
             >
-              <Card className="hover:shadow-lg transition-shadow">
+              <Card>
                 <CardContent className="p-6">
                   <div className="flex items-start justify-between mb-4">
                     <div className="flex items-center space-x-4">
-                      <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center">
-                        <User className="h-6 w-6 text-blue-600 dark:text-blue-400" />
-                      </div>
+                      <Avatar className="h-12 w-12">
+                        <AvatarImage src={appointment.patient.profilePicture} />
+                        <AvatarFallback>
+                          {appointment.patient.name.charAt(0)}
+                        </AvatarFallback>
+                      </Avatar>
                       <div>
                         <h3 className="font-semibold text-gray-900 dark:text-white text-lg">
-                          {appointment.doctor.name}
+                          {appointment.patient.name}
                         </h3>
-                        <p className="text-sm text-blue-600 dark:text-blue-400">
-                          {appointment.doctor.specialty}
-                        </p>
+                        <div className="flex items-center space-x-2 text-sm text-gray-600 dark:text-gray-400">
+                          <Mail className="h-4 w-4" />
+                          <span>{appointment.patient.email}</span>
+                        </div>
                       </div>
                     </div>
                     <div className="text-right">
@@ -340,17 +405,18 @@ export default function AppointmentHistoryPage() {
                       </span>
                     </div>
                     <div className="flex items-center space-x-2">
-                      <MapPin className="h-4 w-4 text-gray-500" />
-                      <span className="text-sm text-gray-600 dark:text-gray-400">
-                        {appointment.doctor.clinicLocation}
-                      </span>
-                    </div>
-                    <div className="flex items-center space-x-2">
                       <FileText className="h-4 w-4 text-gray-500" />
                       <span className="text-sm text-gray-600 dark:text-gray-400">
                         {appointment.appointmentType}
                       </span>
                     </div>
+                    {appointment.consultationFee && (
+                      <div className="flex items-center space-x-2">
+                        <span className="text-sm font-medium text-gray-900 dark:text-white">
+                          ₹{appointment.consultationFee}
+                        </span>
+                      </div>
+                    )}
                   </div>
 
                   {appointment.notes && (
@@ -361,14 +427,11 @@ export default function AppointmentHistoryPage() {
                     </div>
                   )}
 
-                  {appointment.consultationFee && (
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-gray-600 dark:text-gray-400">
-                        Consultation Fee:
-                      </span>
-                      <span className="font-medium text-gray-900 dark:text-white">
-                        ₹{appointment.consultationFee}
-                      </span>
+                  {appointment.patient.medicalHistory && (
+                    <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                      <p className="text-sm text-gray-600 dark:text-gray-400">
+                        <strong>Medical History:</strong> {appointment.patient.medicalHistory}
+                      </p>
                     </div>
                   )}
                 </CardContent>
