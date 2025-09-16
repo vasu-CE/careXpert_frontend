@@ -162,7 +162,7 @@ export default function DoctorAppointmentHistoryPage() {
   const getStatusBadge = (status: string) => {
     const statusConfig = {
       PENDING: { variant: "secondary" as const, label: "Pending", color: "text-yellow-600" },
-      CONFIRMED: { variant: "default" as const, label: "Confirmed", color: "text-white/90" },
+      CONFIRMED: { variant: "default" as const, label: "Confirmed", color: "text-green-600" },
       COMPLETED: { variant: "default" as const, label: "Completed", color: "text-blue-600" },
       CANCELLED: { variant: "destructive" as const, label: "Cancelled", color: "text-red-600" },
       REJECTED: { variant: "destructive" as const, label: "Rejected", color: "text-red-600" },

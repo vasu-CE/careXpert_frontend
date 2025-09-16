@@ -47,7 +47,7 @@ export function Navbar() {
   };
 
   return (
-    <nav className="fixed top-0 w-full bg-white/95 dark:bg-gray-900/95 backdrop-blur-md border-b border-gray-200 dark:border-gray-700 z-50">
+    <nav className="fixed top-0 w-full bg-white/70 dark:bg-zinc-900/40 backdrop-blur-md border-b border-slate-200/60 dark:border-zinc-700/60 z-50">
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16">
           {/* Left side */}
@@ -56,7 +56,7 @@ export function Navbar() {
               to={user ? (user.role === "DOCTOR" ? "/dashboard/doctor" : "/dashboard/patient") : "/"}
               className="flex items-center space-x-2"
             >
-              <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
+              <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl flex items-center justify-center shadow-sm">
                 <Heart className="h-5 w-5 text-white" />
               </div>
               <span className="text-xl font-bold text-gray-900 dark:text-white">

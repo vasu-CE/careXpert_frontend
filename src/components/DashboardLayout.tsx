@@ -11,7 +11,7 @@ export default function DashboardLayout() {
   const user = useAuthStore((state) => state.user);
 
   return (
-    <div className="h-screen bg-white dark:bg-gray-900 flex flex-col overflow-hidden">
+    <div className="h-screen bg-slate-50 dark:bg-zinc-900 flex flex-col overflow-hidden">
       {/* Fixed Top Navbar */}
       <Navbar />
       
@@ -27,7 +27,7 @@ export default function DashboardLayout() {
               variant="ghost"
               size="sm"
               onClick={() => setSidebarOpen(true)}
-              className="bg-white dark:bg-gray-800 shadow-md"
+              className="bg-white/70 dark:bg-zinc-900/40 backdrop-blur-sm border border-slate-200/60 dark:border-zinc-700/60 shadow-md rounded-xl"
             >
               <Menu className="h-5 w-5" />
             </Button>

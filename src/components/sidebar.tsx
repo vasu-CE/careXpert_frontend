@@ -107,7 +107,7 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
       </AnimatePresence>
 
       {/* Desktop Sidebar */}
-      <aside className="hidden md:flex w-64 h-screen bg-gray-50 dark:bg-gray-800 flex-col shadow-lg fixed left-0 top-16 z-40">
+      <aside className="hidden md:flex w-64 h-screen bg-white/70 dark:bg-zinc-900/40 backdrop-blur-sm border-r border-slate-200/60 dark:border-zinc-700/60 flex-col shadow-lg fixed left-0 top-16 z-40">
         {/* Navigation */}
         <nav className="flex-1 px-4 py-6 space-y-2">
           {navItems.map((item) => {
@@ -122,10 +122,10 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
                 <NavLink
                   to={item.href}
                   className={({ isActive }) =>
-                    `flex items-center justify-between px-4 py-3 rounded-lg transition-all duration-200 ${
+                    `flex items-center justify-between px-4 py-3 rounded-xl transition-colors ${
                       isActive 
-                        ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300' 
-                        : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                        ? 'bg-blue-100/70 dark:bg-blue-400/10 text-blue-700 dark:text-blue-300' 
+                        : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100/80 dark:hover:bg-zinc-800/70'
                     }`
                   }
                 >
@@ -152,7 +152,7 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
           x: isOpen ? 0 : "-100%",
           transition: { type: "spring", damping: 25, stiffness: 200 }
         }}
-        className="md:hidden fixed top-16 left-0 h-full w-64 bg-gray-50 dark:bg-gray-800 z-50 flex flex-col shadow-lg"
+        className="md:hidden fixed top-16 left-0 h-full w-64 bg-white/70 dark:bg-zinc-900/40 backdrop-blur-sm border-r border-slate-200/60 dark:border-zinc-700/60 z-50 flex flex-col shadow-lg"
       >
         {/* Mobile close button */}
         <div className="flex items-center justify-end p-4 border-b border-gray-200 dark:border-gray-700">
@@ -179,10 +179,10 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
                 <NavLink
                   to={item.href}
                   className={({ isActive }) =>
-                    `flex items-center justify-between px-4 py-3 rounded-lg transition-all duration-200 ${
+                    `flex items-center justify-between px-4 py-3 rounded-xl transition-colors ${
                       isActive 
-                        ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300' 
-                        : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                        ? 'bg-blue-100/70 dark:bg-blue-400/10 text-blue-700 dark:text-blue-300' 
+                        : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100/80 dark:hover:bg-zinc-800/70'
                     }`
                   }
                   onClick={() => {

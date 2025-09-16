@@ -39,14 +39,14 @@ export default function Layout({ children }: { children?: React.ReactNode }) {
   }
 
   return (
-    <div className="min-h-screen bg-white dark:bg-gray-900 flex">
+    <div className="min-h-screen bg-slate-50 dark:bg-zinc-900 flex">
       {/* Sidebar */}
       <Sidebar isOpen={sidebarOpen} onToggle={() => setSidebarOpen(!sidebarOpen)} />
       
       {/* Main Content */}
       <div className="flex-1 flex flex-col">
         {/* Mobile Header */}
-        <div className="md:hidden flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
+        <div className="md:hidden flex items-center justify-between p-4 border-b border-slate-200/60 dark:border-zinc-700/60 bg-white/70 dark:bg-zinc-900/40 backdrop-blur-sm">
           <Button
             variant="ghost"
             size="sm"
@@ -55,7 +55,7 @@ export default function Layout({ children }: { children?: React.ReactNode }) {
             <Menu className="h-5 w-5" />
           </Button>
           <div className="flex items-center space-x-2">
-            <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
+            <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl flex items-center justify-center shadow-sm">
               <Heart className="h-5 w-5 text-white" />
             </div>
             <span className="text-xl font-bold text-gray-900 dark:text-white">
