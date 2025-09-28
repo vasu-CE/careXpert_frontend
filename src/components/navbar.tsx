@@ -1,7 +1,7 @@
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "./ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
-import { Heart, LogOut, User, Sun, Moon } from "lucide-react";
+import { Stethoscope, LogOut, User, Sun, Moon } from "lucide-react";
 import { useAuthStore } from "@/store/authstore";
 import {
   DropdownMenu,
@@ -42,7 +42,7 @@ export function Navbar() {
 
   const handleLogout = async () => {
     logout();
-    localStorage.removeItem('auth-storage');
+    localStorage.removeItem("auth-storage");
     navigate("/");
   };
 
@@ -53,11 +53,17 @@ export function Navbar() {
           {/* Left side */}
           <div className="flex items-center space-x-2">
             <Link
-              to={user ? (user.role === "DOCTOR" ? "/dashboard/doctor" : "/dashboard/patient") : "/"}
+              to={
+                user
+                  ? user.role === "DOCTOR"
+                    ? "/dashboard/doctor"
+                    : "/dashboard/patient"
+                  : "/"
+              }
               className="flex items-center space-x-2"
             >
               <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl flex items-center justify-center shadow-sm">
-                <Heart className="h-5 w-5 text-white" />
+                <Stethoscope className="h-5 w-5 text-white" />
               </div>
               <span className="text-xl font-bold text-gray-900 dark:text-white">
                 CareXpert
@@ -85,7 +91,10 @@ export function Navbar() {
             {user ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="flex items-center space-x-2 p-2">
+                  <Button
+                    variant="ghost"
+                    className="flex items-center space-x-2 p-2"
+                  >
                     <Avatar className="h-8 w-8">
                       <AvatarImage src={user.profilePicture} />
                       <AvatarFallback className="bg-blue-600 text-white text-sm">
@@ -111,7 +120,9 @@ export function Navbar() {
                       </AvatarFallback>
                     </Avatar>
                     <div>
-                      <p className="text-sm font-medium">{user.name || "User"}</p>
+                      <p className="text-sm font-medium">
+                        {user.name || "User"}
+                      </p>
                       <p className="text-xs text-gray-500">{user.email}</p>
                     </div>
                   </div>
@@ -123,7 +134,7 @@ export function Navbar() {
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem 
+                  <DropdownMenuItem
                     onClick={handleLogout}
                     className="text-red-600 focus:text-red-600"
                   >
@@ -140,7 +151,10 @@ export function Navbar() {
                   </Button>
                 </Link>
                 <Link to="/auth/patient/signup">
-                  <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white">
+                  <Button
+                    size="sm"
+                    className="bg-blue-600 hover:bg-blue-700 text-white"
+                  >
                     Sign Up
                   </Button>
                 </Link>

@@ -1,12 +1,20 @@
 import { useState } from "react";
 import { Button } from "../components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "../components/ui/card";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "../components/ui/avatar";
 import { Edit, User, Mail, Phone, Calendar, MapPin } from "lucide-react";
 import { useAuthStore } from "@/store/authstore";
 import { motion } from "framer-motion";
+import axios from "axios";
+import { toast } from "sonner";
 
 export default function ProfilePage() {
   const user = useAuthStore((state) => state.user);
@@ -16,20 +24,74 @@ export default function ProfilePage() {
     email: user?.email || "john.doe@example.com",
     phone: "+1 (555) 123-4567",
     age: "28",
-    address: "123 Main Street, City, State 12345"
+    address: "123 Main Street, City, State 12345",
   });
+  const [selectedImage, setSelectedImage] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const setUser = useAuthStore((state) => state.setUser);
+  const baseUrl = `${import.meta.env.VITE_BASE_URL}/api/user`;
+  const [saving, setSaving] = useState(false);
 
   const handleInputChange = (field: string, value: string) => {
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      [field]: value
+      [field]: value,
     }));
   };
 
   const handleSave = () => {
-    // Here you would typically save to backend
-    console.log("Saving profile:", formData);
-    setIsEditing(false);
+    // Save to backend with multipart form data
+    const doSave = async () => {
+      try {
+        setSaving(true);
+        const form = new FormData();
+        if (formData.name && formData.name !== user?.name)
+          form.append("name", formData.name);
+        if (selectedImage) form.append("profilePicture", selectedImage);
+
+        const endpoint =
+          user?.role === "DOCTOR"
+            ? `${baseUrl}/update-doctor`
+            : `${baseUrl}/update-patient`;
+        const res = await axios.put(endpoint, form, {
+          withCredentials: true,
+          headers: { "Content-Type": "multipart/form-data" },
+        });
+        if (!res.data?.success) {
+          throw new Error(res.data?.message || "Failed to update profile");
+        }
+
+        // Fetch fresh profile to ensure updated data
+        const me = await axios.get(`${baseUrl}/authenticated-profile`, {
+          withCredentials: true,
+        });
+        if (me.data?.success && me.data?.data?.user) {
+          const updatedUser = me.data.data.user;
+          setUser(updatedUser);
+          setFormData((prev) => ({
+            ...prev,
+            name: updatedUser.name || prev.name,
+            email: updatedUser.email || prev.email,
+          }));
+        }
+
+        toast.success("Profile updated successfully");
+        setIsEditing(false);
+        setSelectedImage(null);
+        setPreviewUrl(null);
+      } catch (error) {
+        if (axios.isAxiosError(error) && error.response) {
+          toast.error(
+            error.response.data?.message || "Failed to update profile"
+          );
+        } else {
+          toast.error("Failed to update profile");
+        }
+      } finally {
+        setSaving(false);
+      }
+    };
+    doSave();
   };
 
   const handleCancel = () => {
@@ -39,9 +101,23 @@ export default function ProfilePage() {
       email: user?.email || "john.doe@example.com",
       phone: "+1 (555) 123-4567",
       age: "28",
-      address: "123 Main Street, City, State 12345"
+      address: "123 Main Street, City, State 12345",
     });
     setIsEditing(false);
+    setSelectedImage(null);
+    setPreviewUrl(null);
+  };
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] || null;
+    setSelectedImage(file);
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = () => setPreviewUrl(reader.result as string);
+      reader.readAsDataURL(file);
+    } else {
+      setPreviewUrl(null);
+    }
   };
 
   return (
@@ -71,16 +147,32 @@ export default function ProfilePage() {
         >
           <Card className="sticky top-8">
             <CardHeader className="text-center">
-              <div className="flex justify-center mb-4">
+              <div className="flex flex-col items-center mb-4">
                 <Avatar className="w-24 h-24">
-                  <AvatarImage 
-                    src={user?.profilePicture || "/placeholder-user.jpg"} 
+                  <AvatarImage
+                    src={
+                      previewUrl ||
+                      user?.profilePicture ||
+                      "/placeholder-user.jpg"
+                    }
                     alt="Profile Picture"
                   />
                   <AvatarFallback className="text-2xl">
-                    {formData.name.split(' ').map(n => n[0]).join('')}
+                    {formData.name
+                      .split(" ")
+                      .map((n) => n[0])
+                      .join("")}
                   </AvatarFallback>
                 </Avatar>
+                {isEditing && (
+                  <div className="mt-3">
+                    <Input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleImageChange}
+                    />
+                  </div>
+                )}
               </div>
               <CardTitle className="text-xl">{formData.name}</CardTitle>
               <CardDescription className="text-base">
@@ -119,7 +211,9 @@ export default function ProfilePage() {
             <CardHeader>
               <div className="flex items-center justify-between">
                 <div>
-                  <CardTitle className="text-2xl">Personal Information</CardTitle>
+                  <CardTitle className="text-2xl">
+                    Personal Information
+                  </CardTitle>
                   <CardDescription>
                     Update your personal details and contact information
                   </CardDescription>
@@ -178,7 +272,7 @@ export default function ProfilePage() {
                   />
                 </div>
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="address">Address</Label>
                 <Input
@@ -197,8 +291,12 @@ export default function ProfilePage() {
                   exit={{ opacity: 0, height: 0 }}
                   className="flex space-x-4 pt-4"
                 >
-                  <Button onClick={handleSave} className="bg-blue-600 hover:bg-blue-700">
-                    Save Changes
+                  <Button
+                    onClick={handleSave}
+                    disabled={saving}
+                    className="bg-blue-600 hover:bg-blue-700"
+                  >
+                    {saving ? "Saving..." : "Save Changes"}
                   </Button>
                   <Button variant="outline" onClick={handleCancel}>
                     Cancel

@@ -38,8 +38,20 @@ export interface FormattedMessage {
 }
 
 export const joinRoom = (roomId: string) => {
-  console.log("join");
+  // Join a DM room (1:1)
   socket.emit("joinDmRoom", roomId);
+};
+
+export const joinCommunityRoom = (
+  roomId: string,
+  userId: string,
+  username: string
+) => {
+  // Join a community/city room and notify others
+  socket.emit("joinRoom", {
+    event: "joinRoom",
+    data: { roomId, userId, username },
+  });
 };
 
 export const sendMessage = (message: DmMessageData) => {
